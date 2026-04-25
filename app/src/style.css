@@ -115,4 +115,8 @@ footer {
 
 footer .accent {
   color: var(--accent);
+  text-decoration: none;
+}
+footer .accent:hover {
+  text-decoration: underline;
 }

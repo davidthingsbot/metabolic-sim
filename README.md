@@ -1,5 +1,7 @@
 # Metabolic Simulator
 
+**Live: <https://davidthingsbot.github.io/metabolic-sim/>**
+
 A browser-based simulator that shows, in plain language, what food does once you've eaten it.
 
 You drop a hamburger onto a timeline, hit play, and watch — across the bloodstream, the liver, the muscles, the fat tissue, and the brain — what happens over the next twelve hours. Or you set up three fast-food meals a day, sedentary days, no exercise, and let it run for ten simulated years to see what happens to a healthy 20-year-old. Or you set up an endurance athlete's training week and watch the fuel mix shift hour by hour.

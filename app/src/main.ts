@@ -37,7 +37,7 @@ function render(): void {
     </div>
 
     <footer>
-      Open source · No accounts · No telemetry · Hosted on <span class="accent">GitHub Pages</span>
+      Open source · No accounts · No telemetry · <a class="accent" href="https://github.com/davidthingsbot/metabolic-sim" target="_blank" rel="noopener">source on GitHub</a>
     </footer>
   `;
 
