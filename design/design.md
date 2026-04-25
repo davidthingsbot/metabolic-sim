@@ -51,6 +51,8 @@ Label mode is orthogonal to visual style (Section 14) and orthogonal to the Kids
 
 The simulator depicts as much of the relevant body as it can fit. The layout is fixed and hand-tuned because the parts of the system don't change — there's no need for general-purpose layout, just careful design.
 
+**Layout stability is non-negotiable.** Positions on the screen are constant — across time, across views (where applicable), across density tiers, and across multi-individual cells. An organ that sits in the top-right at minute 0 sits in the top-right at year 10. A chart axis at the bottom-left stays at the bottom-left whether the simulation is paused, playing forward, or scrubbing through history. This is what makes bookmark toggling, before/after comparison, and side-by-side individual comparison legible — the eye locks onto a position, and any change at that position reads directly. Anything that *would* move is either an animated quantity (a particle stream, a fill level, a glow intensity) or a deliberate density-tier change at a viewport-size boundary (Section 14). Layouts never reflow on time advance.
+
 **Core organs and tissues shown:**
 - Heart and major blood vessels (the circulatory loop, both pulmonary and systemic)
 - Lungs (gas exchange, oxygen ceiling)
@@ -91,11 +93,17 @@ The visible state extends to inputs that touch many systems at once. Alcohol sho
 
 All of these are stylized — diagrammatic, not photorealistic. Each uses the same visual style as the surrounding view (Anatomical, Dashboard, Line Drawing — see Section 14). Each has its own snapshot button.
 
+**Detail panels and cross-entity linkage.** Clicking any named entity on the screen — a hormone gauge, a substance fill, an organ silhouette, a condition badge, a drug pill in the calendar — opens a detail panel. The panel does not just describe the thing; it lists every other entity in the simulator that *connects* to it: every flow that hormone gates, every organ that substance is consumed by or produced in, every condition that modulates the entity's rate constants, every drug or food that touches it. Each item in those lists is a clickable link that scrolls or zooms the active view to highlight the target.
+
+A user investigating *insulin* sees, in one panel: the substances it gates (blood glucose into cells, free fatty acid release suppression), the organs that produce it (pancreas) and respond to it (liver, muscle, fat tissue), the conditions that affect it (type 2 diabetes), and the drugs and foods that interact with it (GLP-1 agonists, exogenous insulin, carbohydrate-rich meals). Clicking any of those entities navigates the highlight there and presents *its* connections.
+
+This makes a complex domain navigable for non-experts without overwhelming the main view, which stays at its fixed level of detail. The connection graph lives in the engine's name dictionary and is generated at build time, not handwritten per panel.
+
 ---
 
 ## 5. Views and Perspectives
 
-The user can switch among several fixed views. Each is hand-laid-out for clarity, not procedurally generated. Shared time control and shared underlying state — switching views never restarts the simulation.
+The user can switch among several fixed views. Each is hand-laid-out for clarity, not procedurally generated. Shared time control and shared underlying state — switching views never restarts the simulation, and never reloads. The active view is a render of the same in-memory state; transitions are instant. The clock continues to tick across the transition, or remains paused, depending on the user's play state.
 
 1. **Whole Body** — anatomical schematic. Default view. Everything visible at once with informative density tuned for a 1080p screen.
 2. **Fuel Flows** — abstracted diagram of fuel currencies (blood glucose, free fatty acids, ketones, amino acids, ATP). Organs drawn as nodes, flows as edges. Best for understanding the metabolic logic.
@@ -132,13 +140,21 @@ The time control supports play forward, play backward, pause, step in either dir
 
 ## 7. Saved States, History, and Recordings
 
-The simulator keeps a complete, browsable record of every run. Three overlapping mechanisms make this work.
+The simulator keeps a complete, browsable record of every run. Four overlapping mechanisms make this work.
 
 **Save / Load.** A full simulation state — all substances, all locations, all hormones, all tissues, all Health scores, the calendar, the event queue, the history buffer, and the active scenario — can be saved at any moment. Saves go to IndexedDB by default; the user can also export to a JSON file and re-import later. A save captures the simulation as a state machine, not as a recording: loading places the user back at exactly the moment the save was taken, with the future still simulable from there. Multi-individual runs save and load as a single bundle.
 
 **History.** As the engine advances, it records two parallel streams. The first is a rolling state buffer — full state snapshots taken at intervals that scale with the time multiplier (every simulated second at 1×, every simulated minute at 60×, every simulated day at 86,400×, and so on). The second is the event log — a chronological list of every meal, exercise bout, sleep period, hormonal surge, and notable threshold crossing (e.g. "liver glycogen dropped below 20%"). Together these allow the user to scrub time backwards through the timeline, jump to any event, and see exactly what the body looked like just before and just after.
 
 **Backwards play.** The simulator can play time in reverse. Forward play continues the simulation; backwards play replays from history. Backwards play is therefore strictly read-only — the user cannot edit the calendar while moving backward, only observe. Forward play from a historical moment branches a new future, optionally archiving the previous future as a "what-if" timeline visible in the timeline scrubber.
+
+**Bookmarks.** Bookmarks are user-set markers on the timeline. A bookmark captures a single simulated moment — its time, its active view, its label mode, and its visual style — and is given a name. Bookmarks live alongside the event log in the timeline scrubber.
+
+Their purpose is **before/after comparison**. Bookmark a "before" moment (a healthy 20-year-old at year 0). Let the simulation run for ten simulated years of fast food. Bookmark the "after" moment (the same body at year 10). Then toggle between the two with a single click or keyboard shortcut — instant, no reload, no animation start, no view switch. The simulator scrubs the in-memory state to the bookmarked moment and renders the same view at that moment.
+
+Because the layout is fixed in space *and* across time (Section 4), the user's eye stays on one organ, one chart, one diagram across the toggle and reads the change directly. A bookmark toggle is the strongest evidence that something has changed, because everything that *hasn't* changed sits still on the screen.
+
+Bookmarks save with the scenario and travel via shared URLs. A built-in scenario can ship with a curated set of bookmarks (e.g. *"year 0", "year 5", "year 10"*) so a recipient lands at the first bookmark and can step through the arc.
 
 **Recordings.** Any segment of history can be saved as a video-style animation. The user picks a start time, an end time, a time multiplier (which can differ from the original run — a heartbeat captured at 1× can be replayed at 0.25× for inspection, or a year captured at high speed can be re-rendered slower), and a view (or sequence of views). The simulator renders out a playable clip — WebM where the browser supports it, otherwise a frame-sequence ZIP for editing elsewhere. Recordings respect the active light or dark mode at render time and include the simulated date, scenario name, and time multiplier as a footer overlay.
 
@@ -172,6 +188,8 @@ The "Comparing Different Individuals" scenario configures these axes — includi
 **Layout.** The Multiple Individuals view shows each body's anatomical schematic at reduced size in a grid. Hovering or clicking a body promotes it to a larger panel; the others remain animated at thumbnail size. Charts in this mode overlay the individuals on shared axes by default. Snapshots and recordings capture the whole grid.
 
 **Engine cost.** Each additional individual is roughly an additional engine instance. The Web Worker design — one worker per individual, plus a coordinator — keeps this clean. Six individuals at once is the practical ceiling on a typical laptop without dropping the visualization frame rate.
+
+**Default cognitive load.** First-time users land in a single-individual configuration; the Multiple Individuals view is opt-in. When the user does open it, the default is *two* bodies, populated as the *Comparing Lifestyles* preset (identical bodies, two different calendars). Two is the cognitive-load default — meaningful comparison without overwhelm. Up-to-six is for users with a specific comparison in mind. The user can always go back to one.
 
 **Calendar mode.** Calendars can be shared (every individual eats the same meals at the same times) or per-individual (the lifestyle-comparison case). The scenario file format supports both, and a single scenario can mix them — for example, a shared sleep schedule with per-individual diets.
 
@@ -302,6 +320,8 @@ A single-file TypeScript module. Pure functions where possible; one mutable stat
 
 **Rate-of-change shape:** Every flow is a saturating curve, not a linear or hard-clipped relation. This matters because the body's machinery has finite capacity everywhere — a cell can absorb blood glucose only so fast, the gut can ship dietary fat only so fast, the liver can produce ketones only so fast. The simulator gets its qualitative behaviour from these saturations, not from specific magic numbers.
 
+**Per-constant provenance.** Every numerical constant in the engine — every rate, every capacity, every saturating-curve parameter — is annotated in code with a structured comment naming its source: the section of `background/` where the value is defended (or flagged as soft) and, where applicable, an external citation. The engine carries a debug overlay that surfaces the provenance of any value displayed in the UI, so a user (or a reviewer) can ask "where does this number come from?" and read the answer without leaving the simulator. This is not extra work: the constant count is small (~100s, not 10,000s), and committing to the discipline at code level forces the design's calibration questions to stay visible rather than getting buried.
+
 **Recovery as parallel pools.** Recovery is not a single number — it is several refill or clearance processes running in parallel, each with its own time constant. ATP / phosphocreatine restore in seconds. blood glucose normalises in minutes. lactate clears in tens of minutes. glycogen stores refill over hours, faster inside the post-exercise sensitivity window. intramuscular fat refills over 24–48 hours. Muscle damage repair runs over days. Connective tissue remodels over weeks. The engine tracks each pool separately so the visible state at any moment reflects the actual mix of "what is back" and "what is still recovering."
 
 **Asymmetric training and detraining.** The trainable dimensions (mitochondrial density, oxygen ceiling, capillary density, intramuscular fat capacity, and the others on the `Tissue` table) adapt to training stimulus on a multi-week timescale, but they decay slightly faster when stimulus is removed than they accrue when stimulus is added. The engine uses asymmetric rate constants for the up-curve and the down-curve, reflecting the documented "use it or lose it" pattern.
@@ -345,7 +365,7 @@ Some pieces of the model are genuinely contested in the literature. The simulato
 
 The user picks one hypothesis per topic; the simulator runs that model. Hypothesis selections are encoded in saved states, scenarios, and shared URLs, so a recipient sees the same model the sender chose. A multi-individual run can deliberately pair the same body under two different hypotheses to visualize the divergence — an honest way to communicate "this is what we don't know yet."
 
-Where a hypothesis selection would meaningfully change a chart or visualization, the legend names the active hypothesis so a screenshot is never ambiguous about which model produced it.
+Where a hypothesis selection would meaningfully change a chart or visualization, the legend names the active hypothesis so a screenshot is never ambiguous about which model produced it. When the user has switched away from the mainstream default, the relevant on-screen elements — chart legends, organ glow intensities, vessel-wall thickness in the long-term diagrams (Section 4) — carry a small badge identifying the active hypothesis. This explicit epistemic layer is, as far as the prior-art survey could tell, novel in browser-based physiology tools: none of the surveyed candidates exposes hypothesis selection to the user at all. Treating it as a deliberate competitive feature, not just an honest hedge, is the right framing.
 
 Examples of areas this applies to:
 - The exact contribution of dietary fat composition (saturated vs unsaturated) to vessel wall changes.
@@ -384,10 +404,14 @@ The default position is humility, not authority.
 - Typography is system-default sans-serif. No icon fonts; SVG icons inline.
 - The active simulated time and date are always visible in the top bar. The current scenario name is always visible in the bottom-right.
 
-**Responsive layout.** The simulator must remain legible across a wide range of viewport sizes — from a 320 × 200 embedded window to a full-screen 4K display. The anatomical layout itself is fixed (the heart is always where the heart is) but detail level scales with available pixels:
+**Mobile first.** The simulator's primary form factor is a phone. The Compact layout is not a graceful-degradation fallback for a desktop design — it is the *baseline* design, the one that must work end-to-end before any larger size is considered. Every scenario must be runnable to completion on a 360 × 640 phone screen with the schematic, time controls, charts, event log, and bookmarks all reachable without horizontal scroll, and snapshots must be legible at that resolution. Larger viewport sizes *add* density and panels; they do not introduce features that aren't reachable on the phone.
 
-- *Compact* (≤ 640 px wide) — anatomical silhouette with the most load-bearing flows and stored amounts. Hormone gauges collapse into a corner sparkline. Charts collapse into a single most-relevant series. Multi-individual mode caps at two bodies.
-- *Standard* (641–1280 px) — full whole-body schematic with all major flows and quantities. Hormone gauges visible. Side panel for charts and timeline.
+This shapes the build sequence: Phase 2's Whole Body view ships at Compact density first; the wider tiers come once the small one is right. It also constrains the budget — JavaScript bundle weight, animation cost, and memory footprint are sized for a mid-range phone, not a workstation.
+
+**Responsive layout.** Detail level scales smoothly with available pixels, from 320 × 200 embedded all the way up to 4K. The anatomical layout itself is fixed (the heart is always where the heart is); each tier *adds* to the previous, never reorganises:
+
+- *Compact* (≤ 640 px wide) — the baseline. Anatomical silhouette with the most load-bearing flows and stored amounts. Hormone gauges collapse into a corner sparkline. Charts collapse into a single most-relevant series. Multi-individual mode caps at two bodies. Touch targets sized for fingers (44 × 44 px minimum).
+- *Standard* (641–1280 px) — adds the full set of major flows and quantities to the schematic. Hormone gauges visible. Side panel for charts and timeline.
 - *Detailed* (1281–1920 px) — adds secondary flows, micronutrient indicators, foreign-substance gauges, and the full event log alongside the schematic.
 - *Spacious* (≥ 1921 px) — adds the multi-individual grid alongside the primary view, full-resolution charts, and a wider event log with search.
 
@@ -413,6 +437,10 @@ The simulator must run as a static page on GitHub Pages — no backend, no build
 - No heavy framework needed. A small reactive layer (Preact, lit, or hand-written) is sufficient. Avoid React + ecosystem unless a clear need emerges.
 - Web Workers carry the simulation engine off the UI thread, so the engine can run flat-out without stalling rendering.
 - All state is local. Saved scenarios use IndexedDB; shared scenarios use URL fragments.
+
+**Test-driven development.** All engine and view code is built TDD. Write the failing test first, then the implementation. The simulation engine benefits hardest — its substances and flows are pure functions with deterministic inputs and outputs and well-defined reference curves to assert against. UI work uses component-level tests (logic, state transitions, label rendering, label-mode switching, bookmark behaviour, time-control dispatch); pixel-level visual regression is too brittle for a hand-tuned anatomical diagram and is *not* part of the test suite. Tests live alongside the source files they cover. The CI workflow runs the full suite on every push; a red test blocks deploy.
+
+This commitment shapes the engine's structure as much as the dev process: pure functions where possible, mutable state confined to one well-defined object, side effects pushed to the boundaries. Code that's hard to test gets refactored.
 
 **Performance target:** ten simulated years of the "Sedentary Knowledge Worker" scenario should complete in under thirty seconds of wall-clock time on a typical laptop, with the UI remaining responsive throughout. The engine should comfortably hit 1 million simulated seconds per real second on the slow-only paths.
 

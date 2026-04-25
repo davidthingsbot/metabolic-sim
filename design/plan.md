@@ -21,13 +21,19 @@ Research feeding the design lives in `background/`. The current research index w
 
 When a research note returns and contains design-relevant decisions, those are surfaced for review and merged into `design.md` before the affected phase begins.
 
+## Discipline that applies to every code-writing phase
+
+- **Test-driven development.** All engine and view code starts with a failing test (per `design.md §15`). Tests live alongside source. CI runs the suite on every push; red blocks deploy.
+- **Mobile-first.** Compact density (≤640 px) is the baseline that every phase ships first; larger tiers add density without reorganising (per `design.md §14`).
+- **Layout stability.** Positions on the screen are constant across time, views, density tiers, and multi-individual cells (per `design.md §4`).
+
 ---
 
 ## Phase 0 — Repository, Pages, and base page
 
-**Status:** 🟡 In progress — local scaffold up; GitHub-side steps pending user
+**Status:** ✅ Done — live at https://davidthingsbot.github.io/metabolic-sim/
 
-**Done so far:**
+**Delivered:**
 - Vite 7 + TypeScript 5 scaffold under `app/` (no framework — added in Phase 2 only when needed).
 - `npm install`, `npm run dev` (localhost:5173) and `npm run build` all working locally.
 - Base page renders: project title, lede, "coming soon" placeholder, light/dark mode toggle (preference stored in localStorage; respects system preference on first load).
@@ -92,28 +98,24 @@ Stand up the website infrastructure before any simulation work begins. Choose th
 
 ## Phase 0.5 — Prior art assessment
 
-**Status:** 🟡 In progress — first-phase surface sweep complete; deep dives pending
+**Status:** 🟡 In progress — surface sweep ✅, web-verification ✅, deep dives running, synthesis pending
 
 A scan of what already exists in the space, so we know whether we are duplicating something, where to borrow ideas, and what distinguishes our project. Lives in `background/prior-art/`.
 
 **Concrete steps:**
 
-1. **First-phase surface sweep.** ✅ ~36 candidates catalogued across 9 categories (metabolic simulators, anatomical visualisation, health/nutrition apps with modelling, educational physiology software, open-source projects, research-grade engines, game-style body sims, CGM tools, pure-web body visualisations). Index at `background/prior-art/README.md`. *Caveat: WebSearch/WebFetch unavailable when the sweep ran; URLs and pricing should be re-verified before the deep dives.*
-2. **Re-verify the surface sweep with live web access.** Confirm URLs, pricing, alive-vs-dead, and last-update signals for each entry. Update the README.
-3. **Deep dives on the 🔍 entries.** One file per candidate in `background/prior-art/`:
+1. ✅ **First-phase surface sweep.** ~36 candidates catalogued across 9 categories. Index at `background/prior-art/README.md`.
+2. ✅ **Re-verify the surface sweep with live web access.** ~33 entries verified, ~14 materially updated, 2 marked 🔵 (could not verify), 1 reclassified ❌ (Veri — acquired by Oura, app sunset end of 2024), 6 new entries added. Notable changes captured in the README's Verification log. Five of six 🔍 candidates have images saved under `images/`.
+3. 🟡 **Deep dives on the 🔍 entries** (sub-agent running). One file per candidate in `background/prior-art/`:
    - `vmh.md` — Virtual Metabolic Human / Recon3D
    - `hummod.md` — HumMod whole-body physiology engine
    - `biodigital-human.md` — interactive 3D anatomy benchmark
    - `visible-body.md` — education-software distribution model
    - `levels.md` — consumer-facing "see what food does" framing
    - `physioex.md` — closest direct competitor in browser-based physiology teaching
-   Plus possibly **PhET** as a cultural / UX benchmark even though it doesn't compete on content.
-4. **For each deep dive:** screenshots, what they do well, what they do badly, what to borrow, what to avoid, and how their decisions inform ours. Capture pricing and licensing carefully — these affect whether our project is *complementary* to or *competing with* a candidate.
-5. **Synthesis pass.** A short note (`background/prior-art/synthesis.md` or similar) summarising:
-   - Validated gaps in the space (the surface sweep flagged five — disease-as-starting-condition, multi-individual side-by-side, single-meal-to-multi-year in one engine, plain-language-over-real-engine, free-browser-with-PhET-polish).
-   - Concrete UX/feature ideas worth borrowing.
-   - Anything we should consider revising in the design as a result.
-6. **Design feedback.** Where the synthesis surfaces a real change to make, propose specific edits to `design.md` and apply on approval.
+4. 🟡 **For each deep dive** (in progress with step 3): what they do well, what they do badly, what to borrow, what to avoid, how their decisions inform ours, screenshots where useful. Bias toward concrete UX/architecture lessons over encyclopaedic summary.
+5. ⬜ **Synthesis pass** — `background/prior-art/synthesis.md`. Will consolidate validated gaps, UX patterns worth borrowing, anti-patterns to avoid, and which deferred decisions in `design.md §17` prior art can now inform.
+6. ⬜ **Design feedback.** Synthesis will end with 5–10 concrete proposed edits to `design.md`. The user reviews and approves before any change lands. Sub-agents do not modify `design.md` directly.
 
 **Done when:**
 
@@ -133,13 +135,13 @@ Substances, locations, one substance flow (blood glucose), one hormone (insulin)
 
 ---
 
-## Phase 2 — Whole Body view (Anatomical style, all density levels)
+## Phase 2 — Whole Body view (Anatomical style, mobile first)
 
 **Status:** ⬜ Not started
 
-Static SVG schematic with one quantity (blood glucose) animated. Time controls. Responsive density levels (Compact, Standard, Detailed, Spacious) baked in from the start so the layout is never retrofitted. One scenario (Single Hamburger).
+Static SVG schematic with one quantity (blood glucose) animated. Time controls. **Compact (≤640 px) is built first end-to-end** — the Single Hamburger scenario must run to completion on a 360 × 640 phone before any larger tier is considered. Standard / Detailed / Spacious tiers add density on top of the Compact baseline; they never reorganise it. Layout positions are constant across time and density transitions (Section 4).
 
-**Done when:** A user can load the page on a phone and on a 4K monitor, see the body schematic at appropriate density on each, hit play, and watch blood glucose respond to a hamburger across the visible organs.
+**Done when:** A user can load the page on a phone and watch blood glucose respond to a hamburger across the visible organs end-to-end without horizontal scroll. Larger viewports add detail without changing position.
 
 ---
 
