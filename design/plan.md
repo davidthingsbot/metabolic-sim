@@ -127,11 +127,22 @@ A scan of what already exists in the space, so we know whether we are duplicatin
 
 ## Phase 1 — Engine skeleton
 
-**Status:** ⬜ Not started
+**Status:** ✅ Done
 
 Substances, locations, one substance flow (blood glucose), one hormone (insulin), eating one meal, time advancing. No UI — Node test harness only.
 
-**Done when:** A Node script can simulate one body eating one meal, with blood glucose rising and falling correctly over the following hours, against the curves described in `background/metabolic-pathways.md`.
+**Delivered:**
+- TDD discipline established with vitest. CI runs `npm test` before `npm run build`; red blocks deploy.
+- Engine state types (`State`, `Substance`, `Location`, `Hormone`) — minimal v1 set: glucose across `gut` / `blood` / `cells`, insulin in bloodstream.
+- `step(state, dt)` composes three flows: digestion (gut → blood, first-order), insulinResponse (lagged target with 15-min time constant), cellularUptake (blood → cells, gated by insulin × glucose excess).
+- Meal event applied via `applyEvent(state, event)`; Phase 5 wires the event queue into `step` itself.
+- 26 passing tests across 5 test files. Each numerical constant carries an `@provenance` comment per design.md §11.
+- End-to-end acceptance test: 50 g meal, 4-hour simulation, asserts the qualitative shape (rises, peaks mid-run, returns toward fasting, mass conserved).
+
+**Carry-forward to Phase 3:**
+- Calibrate constants against reference postprandial curves: `DIGESTION_RATE_PER_MINUTE`, `INSULIN_GAIN_UU_PER_G`, `INSULIN_TIME_CONSTANT_MIN`, `CELLULAR_UPTAKE_K`.
+- Replace the linear insulin target with a sigmoidal first-phase + tonic model.
+- Tighten the peak-time bound on the end-to-end test to 30–60 minutes once calibration lands.
 
 ---
 
