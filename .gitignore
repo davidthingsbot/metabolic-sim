@@ -1,0 +1,18 @@
+# Node
+app/node_modules/
+app/dist/
+app/.vite/
+app/package-lock.json.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Claude (project-local settings)
+.claude/settings.local.json
