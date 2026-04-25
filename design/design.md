@@ -91,7 +91,9 @@ The visible state extends to inputs that touch many systems at once. Alcohol sho
 - **Lung capacity panel.** A stylized lung silhouette showing functional alveolar surface area (gas-exchange capacity) — visibly reduced by sustained smoking, visibly partly recoverable after cessation.
 - **Skin texture panel.** A small skin-cross-section diagram showing collagen and elastin density, hydration, and visible aging. Lower priority than the others but cheap to add.
 
-All of these are stylized — diagrammatic, not photorealistic. Each uses the same visual style as the surrounding view (Anatomical, Dashboard, Line Drawing — see Section 14). Each has its own snapshot button.
+All of these are stylized — diagrammatic, not photorealistic. Each has its own snapshot button.
+
+The stylized health diagrams have their own visual register, which **is allowed to differ from the headline view's visual style**. The painterly-plate look that works for a vessel cross-section may not be the right choice for the Whole Body schematic; the encyclopedia-line treatment that works for a bone cutaway may not fit the Fuel Flows view. Section 14 picks the visual style for the headline schematic and the abstracted diagrams; this set picks its own register, with consistency *within the set* rather than slaved to the outer view.
 
 **Detail panels and cross-entity linkage.** Clicking any named entity on the screen — a hormone gauge, a substance fill, an organ silhouette, a condition badge, a drug pill in the calendar — opens a detail panel. The panel does not just describe the thing; it lists every other entity in the simulator that *connects* to it: every flow that hormone gates, every organ that substance is consumed by or produced in, every condition that modulates the entity's rate constants, every drug or food that touches it. Each item in those lists is a clickable link that scrolls or zooms the active view to highlight the target.
 
@@ -424,6 +426,10 @@ The user can override the auto-selected density level — pinning a small viewpo
 - An *elegant line-drawing* style — single-weight or double-weight strokes, minimal fill, monochromatic with one accent colour. The kind of look aimed at presentation, print, and snapshots that need to read as illustrations rather than UI.
 
 The architectural commitment is the rendering layer, not the specific styles: each style is a separate rendering pass over the same simulation state and the same anatomical layout. Flow particles, fill levels, glow intensities, and gauge readings come from the same numbers regardless of style — only the drawing differs. Light and dark modes apply within each style. The active style is encoded in saved states, scenarios, recordings, and shared URLs, so a recipient sees the same visual choice the sender intended.
+
+The stylized health diagrams (Section 4) carry their own visual register, which is permitted to differ from the headline schematic's visual style — see that section for the reasoning.
+
+**Style-selection validation.** Before any visual style ships, it must be rendered side-by-side at two density tiers (Compact and Standard at minimum, plus Detailed for desktop-leaning styles) to verify it scales without losing legibility. This catches styles that look great in a hero illustration but fall apart at phone size — the most likely failure mode given the mobile-first commitment. The exercise is a required step during the visual-research phase of Phase 10; the validation pairs themselves end up as artefacts in `background/visualization-ideas/`.
 
 ---
 
