@@ -1,5 +1,7 @@
 // Phase 0 base page. The simulator itself begins in Phase 1.
 
+import heroImageUrl from './assets/controls2-hero.png';
+
 const STORAGE_KEY = 'metabolic-sim:theme';
 
 type Theme = 'light' | 'dark';
@@ -29,12 +31,10 @@ function render(): void {
       A browser-based simulator that shows, in plain language, what food does once you've eaten it. Drop a hamburger onto a timeline, hit play, and watch — across the bloodstream, the liver, the muscles, the fat tissue, and the brain — what happens over the next twelve hours. <em>Or watch ten years of one lifestyle play out in minutes.</em>
     </p>
 
-    <div class="placeholder">
-      <div class="placeholder-title">Coming soon</div>
-      <div class="placeholder-detail">
-        Phase 0 is the bare site you are looking at. The simulator itself starts in Phase 1.
-      </div>
-    </div>
+    <figure class="hero">
+      <img src="${heroImageUrl}" alt="Metabolic simulator interface mockup — figure with annotated organs, life timeline, and meal entry" />
+      <figcaption>Mockup, not a screenshot — generated with OpenAI's image generator. The real simulator begins in Phase 1.</figcaption>
+    </figure>
 
     <footer>
       Open source · No accounts · No telemetry · <a class="accent" href="https://github.com/davidthingsbot/metabolic-sim" target="_blank" rel="noopener">source on GitHub</a>
