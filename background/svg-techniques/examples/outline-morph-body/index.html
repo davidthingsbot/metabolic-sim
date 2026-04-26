@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>svg-techniques - outline morph body</title>
+  <link rel="stylesheet" href="./framework.css" />
+</head>
+<body>
+  <div class="st-page st-page--wide">
+    <header class="st-page-header">
+      <h1>svg-techniques - outline morph body</h1>
+      <button id="theme-toggle" type="button">Dark theme</button>
+    </header>
+    <nav class="st-tabs" aria-label="Body views">
+      <button class="st-tab is-active" type="button" data-tab="single" aria-selected="true">Single</button>
+      <button class="st-tab" type="button" data-tab="male" aria-selected="false">Male</button>
+      <button class="st-tab" type="button" data-tab="female" aria-selected="false">Female</button>
+    </nav>
+    <main id="panels" class="st-grid"></main>
+  </div>
+
+  <script type="module">
+    import { mountPanel, mountThemeToggle } from './framework.js';
+    import './panels/body.js';
+    import './panels/body-grid.js';
+
+    mountThemeToggle(document.getElementById('theme-toggle'));
+
+    const panels = document.getElementById('panels');
+    const tabs = Array.from(document.querySelectorAll('.st-tab'));
+    const panelFor = { single: 'body', male: 'body-grid-male', female: 'body-grid-female' };
+    const tabStorageKey = 'outline-morph-body:active-tab';
+
+    function showTab(tabId) {
+      const safeTabId = panelFor[tabId] ? tabId : 'single';
+      for (const tab of tabs) {
+        const active = tab.dataset.tab === safeTabId;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      }
+      mountPanel(panels, panelFor[safeTabId]);
+      localStorage.setItem(tabStorageKey, safeTabId);
+    }
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => showTab(tab.dataset.tab));
+    }
+    showTab(localStorage.getItem(tabStorageKey) || 'single');
+  </script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+/* framework.css — base styles + theme variables for svg-techniques experiments. */
+
+:root,
+:root[data-theme='light'] {
+  --bg: #f7f6f2;
+  --bg-panel: #ffffff;
+  --fg: #1c1c1c;
+  --fg-muted: #5b5b5b;
+  --border: #d8d4ca;
+  --accent: #b94a3a;
+
+  /* Anatomy palette — used by panels via CSS vars so they flip with theme. */
+  --outline: #777a7a;
+  --detail: #777a7a;
+  --skeleton: #2b7de9;
+  --control: #c43a31;
+  --skin: #f0d2bf;
+  --skin-edge: #b88a72;
+  --muscle: #c25a4f;
+  --bone: #ece4cf;
+  --bone-edge: #8a7a4a;
+  --lumen: #c8332a;
+  --intima: #ecbcb1;
+  --media: #d97a6c;
+  --adventitia: #c8a07a;
+  --gut: #c98060;
+  --gut-fill: #8b4a30;
+  --lung: #d99a9a;
+  --lung-airway: #6a3a3a;
+  --liver: #7a3a2a;
+  --liver-fat: #f4d27a;
+}
+
+:root[data-theme='dark'] {
+  --bg: #15161a;
+  --bg-panel: #1e2026;
+  --fg: #ececec;
+  --fg-muted: #a6a6a6;
+  --border: #353841;
+  --accent: #ff7a66;
+
+  --outline: #a7aaaa;
+  --detail: #a7aaaa;
+  --skeleton: #6da6ff;
+  --control: #ff786b;
+  --skin: #d8a98f;
+  --skin-edge: #6e4a3a;
+  --muscle: #c25a4f;
+  --bone: #b8b09a;
+  --bone-edge: #5a4d2a;
+  --lumen: #ff5247;
+  --intima: #b87a70;
+  --media: #c85a4c;
+  --adventitia: #a07b58;
+  --gut: #c87a55;
+  --gut-fill: #f0c094;
+  --lung: #b86c6c;
+  --lung-airway: #ecd0c0;
+  --liver: #c0604a;
+  --liver-fat: #f4d27a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.st-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.st-page--wide {
+  max-width: 1800px;
+}
+
+.st-panel[data-panel='body-grid-male'],
+.st-panel[data-panel='body-grid-female'] {
+  grid-column: 1 / -1;
+}
+
+.st-panel[data-panel='body'] {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-areas:
+    "header   header"
+    "controls stage"
+    "actions  stage";
+  grid-template-columns: 360px minmax(360px, 1fr);
+  grid-template-rows: auto auto 1fr;
+  align-items: start;
+}
+
+.st-panel[data-panel='body'] .st-panel-header { grid-area: header; }
+.st-panel[data-panel='body'] .st-controls { grid-area: controls; }
+.st-panel[data-panel='body'] .st-stage {
+  grid-area: stage;
+  height: calc(100vh - 240px);
+  min-height: 560px;
+  padding: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-panel[data-panel='body'] .st-actions { grid-area: actions; }
+.st-panel[data-panel='body'] .st-canvas {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+
+.st-panel[data-panel='body-grid-male'] .st-stage,
+.st-panel[data-panel='body-grid-female'] .st-stage {
+  overflow: auto;
+}
+
+.st-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.st-page-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.st-page-header button,
+.st-actions button {
+  background: var(--bg-panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.st-page-header button:hover,
+.st-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.st-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.st-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.st-tab {
+  appearance: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.st-tab:hover {
+  color: var(--fg);
+}
+
+.st-tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.st-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.st-panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.st-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.st-control {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-control-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.st-control input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.st-control select {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.st-stage {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.st-stage.is-panning {
+  cursor: grabbing;
+}
+
+.st-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  transform-origin: 0 0;
+}
+
+.control-point {
+  cursor: crosshair;
+}
+
+.control-segment {
+  cursor: help;
+}
+
+.control-point-label {
+  opacity: 0;
+  pointer-events: none;
+  fill: var(--control);
+  stroke: var(--bg-panel);
+  stroke-width: 2.8px;
+  paint-order: stroke;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 5px;
+  font-weight: 700;
+  transition: opacity 80ms linear;
+}
+
+.control-segment-label {
+  opacity: 0;
+  pointer-events: none;
+  fill: var(--control);
+  stroke: var(--bg-panel);
+  stroke-width: 2.8px;
+  paint-order: stroke;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 5px;
+  font-weight: 700;
+  transition: opacity 80ms linear;
+}
+
+.control-point-guide {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 80ms linear;
+}
+
+.control-segment-highlight {
+  pointer-events: none;
+  transition: opacity 80ms linear;
+}
+
+.control-point:hover .control-point-label,
+.control-point:hover .control-point-guide,
+.control-segment:hover .control-segment-label,
+.control-segment:hover .control-segment-highlight {
+  opacity: 1;
+}
+
+.st-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Full-screen single-panel mode.
+   Apply `st-full` to <body> and `st-page--full` to the page wrapper. The page
+   fills the viewport, the panel becomes a two-column grid (controls + actions
+   on the left, SVG stage on the right) that consumes all remaining height. */
+body.st-full {
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+.st-page--full {
+  max-width: none;
+  height: 100vh;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.st-page--full .st-page-header {
+  margin-bottom: 0;
+}
+.st-page--full .st-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  min-height: 0;
+}
+.st-page--full .st-panel {
+  height: 100%;
+  display: grid;
+  grid-template-areas:
+    "header   header"
+    "controls stage"
+    "actions  stage";
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: auto auto 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.st-page--full .st-controls { align-self: start; }
+.st-page--full .st-actions {
+  align-self: start;
+  justify-content: flex-start;
+}
+.st-page--full .st-panel-header { grid-area: header; }
+.st-page--full .st-controls    { grid-area: controls; }
+.st-page--full .st-actions     { grid-area: actions; }
+.st-page--full .st-stage {
+  grid-area: stage;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-page--full .st-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+@media (max-width: 720px) {
+  .st-panel[data-panel='body'] {
+    grid-template-areas:
+      "header"
+      "stage"
+      "controls"
+      "actions";
+    grid-template-columns: 1fr;
+  }
+
+  .st-panel[data-panel='body'] .st-stage {
+    height: calc(100vh - 160px);
+    min-height: 520px;
+    padding: 10%;
+  }
+
+  .st-panel[data-panel='body'] .st-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  .st-page--full .st-panel {
+    grid-template-areas:
+      "header"
+      "stage"
+      "controls"
+      "actions";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
+  }
+}
