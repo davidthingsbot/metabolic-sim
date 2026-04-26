@@ -62,6 +62,7 @@ Status legend: ✅ Done · 🟡 In progress · ⬜ Not started
 | ⬜ | Visual style references (biological, dashboard, line-drawing illustration) | — |
 | ⬜ | Anatomical layout reference (whole-body schematic conventions) | — |
 | ⬜ | Responsive density patterns (4K to embedded-window scale) | — |
+| ✅ | Parametric SVG anatomy techniques (code-driven body and organ rendering) | `svg-illustrations.md` |
 
 ## How research lands here
 
