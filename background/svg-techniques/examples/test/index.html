@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>svg-techniques — test</title>
+  <link rel="stylesheet" href="./framework.css" />
+</head>
+<body class="st-full">
+  <div class="st-page st-page--full">
+    <header class="st-page-header">
+      <h1>svg-techniques — test (whole body)</h1>
+      <button id="theme-toggle" type="button">Dark theme</button>
+    </header>
+    <main id="panels" class="st-grid"></main>
+  </div>
+
+  <script type="module">
+    import { mountPanels, mountThemeToggle } from './framework.js';
+    import './panels/body.js';
+
+    mountThemeToggle(document.getElementById('theme-toggle'));
+    mountPanels(document.getElementById('panels'));
+  </script>
+</body>
+</html>

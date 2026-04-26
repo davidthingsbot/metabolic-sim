@@ -1,0 +1,6 @@
+{
+  "name": "svg-techniques",
+  "private": true,
+  "type": "module",
+  "description": "Marker so .js files in this folder are treated as ES modules by Node. No dependencies."
+}
