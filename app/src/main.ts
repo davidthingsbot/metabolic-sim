@@ -3,7 +3,7 @@ import { App } from './App';
 import { initializeShellApp } from './appBootstrap';
 import { createBrowserRunRepository } from './persistence/browserRunRepository';
 import { createRun } from './runs/runFactory';
-import { applyTheme, preferredTheme } from './theme';
+import { preferredTheme } from './theme';
 
 function createDefaultRunName(): string {
   return 'Metabolic Run';
@@ -16,7 +16,6 @@ async function mountApp(): Promise<void> {
   }
 
   const initialTheme = preferredTheme();
-  applyTheme(initialTheme);
 
   render(
     h('div', { class: 'boot-message', role: 'status' }, 'Loading persisted run…'),
@@ -24,12 +23,13 @@ async function mountApp(): Promise<void> {
   );
 
   try {
-    const initialState = await initializeShellApp({
+    const model = await initializeShellApp({
       repository: createBrowserRunRepository(),
       createDefaultRun: () => createRun({ name: createDefaultRunName() }),
+      initialTheme,
     });
 
-    render(h(App, { initialState, initialTheme }), app);
+    render(h(App, { model }), app);
   } catch (error) {
     console.error(error);
     render(

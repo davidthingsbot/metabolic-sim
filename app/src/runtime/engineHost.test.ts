@@ -1,0 +1,117 @@
+import { describe, expect, it } from 'vitest';
+import { createRun } from '../runs/runFactory';
+import { createRunRepository, type DocumentStore, type RunRepository } from '../persistence/runRepository';
+import { createEngineHost } from './engineHost';
+
+class InMemoryDocumentStore implements DocumentStore {
+  private readonly documents = new Map<string, unknown>();
+
+  async get<T>(key: string): Promise<T | null> {
+    return (this.documents.get(key) as T | undefined) ?? null;
+  }
+
+  async set<T>(key: string, value: T): Promise<void> {
+    this.documents.set(key, structuredClone(value));
+  }
+
+  async delete(key: string): Promise<void> {
+    this.documents.delete(key);
+  }
+
+  async list<T>(prefix: string): Promise<Array<{ key: string; value: T }>> {
+    return [...this.documents.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([key, value]) => ({ key, value: structuredClone(value) as T }));
+  }
+}
+
+class DelayedRunRepository implements RunRepository {
+  private activeRun: ReturnType<typeof createRun> | null = null;
+  private activeRunId: string | null = null;
+
+  constructor(initialRun: ReturnType<typeof createRun>) {
+    this.activeRun = structuredClone(initialRun);
+    this.activeRunId = initialRun.id;
+  }
+
+  async saveRun(run: ReturnType<typeof createRun>): Promise<void> {
+    if (run.activePlaybackTime === 300) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    this.activeRun = structuredClone(run);
+  }
+
+  async loadRun(runId: string) {
+    if (this.activeRun?.id !== runId) return null;
+    return structuredClone(this.activeRun);
+  }
+
+  async listRuns() {
+    return this.activeRun ? [structuredClone(this.activeRun)] : [];
+  }
+
+  async deleteRun(runId: string) {
+    if (this.activeRun?.id === runId) {
+      this.activeRun = null;
+      this.activeRunId = null;
+    }
+  }
+
+  async setActiveRunId(runId: string | null) {
+    this.activeRunId = runId;
+  }
+
+  async getActiveRunId() {
+    return this.activeRunId;
+  }
+
+  async loadActiveRun() {
+    if (!this.activeRunId || this.activeRun?.id !== this.activeRunId) {
+      return null;
+    }
+    return structuredClone(this.activeRun);
+  }
+}
+
+describe('createEngineHost', () => {
+  it('restores or creates the authoritative active run and exposes immutable snapshots', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const restoredRun = createRun({ name: 'Restored Run' });
+    await repository.saveRun(restoredRun);
+    await repository.setActiveRunId(restoredRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    const firstSnapshot = host.getSnapshot();
+    const secondSnapshot = host.getSnapshot();
+
+    expect(firstSnapshot.activeRun).toEqual(restoredRun);
+    expect(firstSnapshot.activeRun).not.toBe(restoredRun);
+    expect(secondSnapshot.activeRun).not.toBe(firstSnapshot.activeRun);
+  });
+
+  it('serializes overlapping run updates before persisting them', async () => {
+    const initialRun = createRun({ name: 'Queued Run' });
+    const repository = new DelayedRunRepository(initialRun);
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await Promise.all([
+      host.updateActiveRun((draft) => {
+        draft.activePlaybackTime = 300;
+      }),
+      host.updateActiveRun((draft) => {
+        draft.activePlaybackTime = 600;
+      }),
+    ]);
+
+    await expect(repository.loadActiveRun()).resolves.toMatchObject({
+      activePlaybackTime: 600,
+    });
+  });
+});

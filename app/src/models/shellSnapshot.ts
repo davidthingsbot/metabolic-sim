@@ -1,4 +1,4 @@
-import type { Run } from './runs/types';
+import type { Run } from '../runs/types';
 
 export type Workspace = 'body-status' | 'event-planner';
 export type SystemId = 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
@@ -15,20 +15,49 @@ export interface ShellDetailCard {
   body: string;
 }
 
-export interface ShellViewModel {
-  runName: string;
-  workspaceLabel: string;
-  highLevelStatus: string;
-  viewerStatus: string;
-  scrubberStatus: string;
-  systems: ShellSystemItem[];
-  detailCards: ShellDetailCard[];
+export interface ShellWorkspaceOption {
+  value: Workspace;
+  label: string;
+  isSelected: boolean;
 }
 
-export interface CreateShellViewModelOptions {
+export interface ShellSnapshot {
+  runName: string;
+  theme: 'light' | 'dark';
+  workspace: {
+    value: Workspace;
+    label: string;
+    options: ShellWorkspaceOption[];
+  };
+  systems: ShellSystemItem[];
+  bands: {
+    header: {
+      eyebrow: string;
+      highLevelStatus: string;
+      viewerStatus: string;
+      runChipLabel: string;
+      themeToggleLabel: string;
+    };
+    midsection: {
+      title: string;
+      copy: string;
+      detailCards: ShellDetailCard[];
+    };
+    footer: {
+      scrubberStatus: string;
+      playbackTime: number;
+      minPlaybackTime: number;
+      maxPlaybackTime: number;
+      playbackStep: number;
+    };
+  };
+}
+
+export interface CreateShellSnapshotOptions {
   run: Run;
   workspace: Workspace;
   selectedSystemId: SystemId;
+  theme: 'light' | 'dark';
 }
 
 const SYSTEMS: Array<{ id: SystemId; label: string; caption: string }> = [
@@ -36,6 +65,11 @@ const SYSTEMS: Array<{ id: SystemId; label: string; caption: string }> = [
   { id: 'blood-system', label: 'Blood System', caption: 'Transport' },
   { id: 'digestive-system', label: 'Digestive System', caption: 'Input' },
   { id: 'lymph-system', label: 'Lymph System', caption: 'Return flow' },
+];
+
+const WORKSPACE_OPTIONS: Array<{ value: Workspace; label: string }> = [
+  { value: 'body-status', label: 'Body Status' },
+  { value: 'event-planner', label: 'Event Planner' },
 ];
 
 function formatHours(seconds: number): string {
@@ -84,28 +118,57 @@ function createPlannerCards(run: Run): ShellDetailCard[] {
   ];
 }
 
-export function createShellViewModel(options: CreateShellViewModelOptions): ShellViewModel {
+export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
   const state = options.run.individuals[0]?.state;
   const bloodSugar = state?.substances.glucose.blood ?? 0;
   const insulin = state?.hormones.insulin ?? 0;
   const selectedSystem = SYSTEMS.find((system) => system.id === options.selectedSystemId) ?? SYSTEMS[0];
+  const workspaceLabel = options.workspace === 'body-status' ? 'Body Status' : 'Event Planner';
 
   return {
     runName: options.run.name,
-    workspaceLabel: options.workspace === 'body-status' ? 'Body Status' : 'Event Planner',
-    highLevelStatus: `Whole body stable · Blood sugar ${bloodSugar.toFixed(1)} g · Storage signal ${insulin.toFixed(1)} µU/mL`,
-    viewerStatus:
-      options.workspace === 'body-status'
-        ? `Viewing ${selectedSystem.label}`
-        : `Planning on ${options.run.scheduleLanes.length} recurring lanes`,
-    scrubberStatus: `Timeline ${formatHours(options.run.activePlaybackTime)}`,
+    theme: options.theme,
+    workspace: {
+      value: options.workspace,
+      label: workspaceLabel,
+      options: WORKSPACE_OPTIONS.map((option) => ({
+        ...option,
+        isSelected: option.value === options.workspace,
+      })),
+    },
     systems: SYSTEMS.map((system) => ({
       ...system,
       isSelected: system.id === selectedSystem.id,
     })),
-    detailCards:
-      options.workspace === 'body-status'
-        ? createBodyStatusCards(selectedSystem.label, options.run)
-        : createPlannerCards(options.run),
+    bands: {
+      header: {
+        eyebrow: 'Metabolic Simulator',
+        highLevelStatus: `Whole body stable · Blood sugar ${bloodSugar.toFixed(1)} g · Storage signal ${insulin.toFixed(1)} µU/mL`,
+        viewerStatus:
+          options.workspace === 'body-status'
+            ? `Viewing ${selectedSystem.label}`
+            : `Planning on ${options.run.scheduleLanes.length} recurring lanes`,
+        runChipLabel: `Run: ${options.run.name}`,
+        themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
+      },
+      midsection: {
+        title: options.workspace === 'body-status' ? 'Master / detail shell' : 'Planner shell',
+        copy:
+          options.workspace === 'body-status'
+            ? 'Static body-status placeholders now sit on top of the persisted run model.'
+            : 'Static planner placeholders use the same active run and timeline model.',
+        detailCards:
+          options.workspace === 'body-status'
+            ? createBodyStatusCards(selectedSystem.label, options.run)
+            : createPlannerCards(options.run),
+      },
+      footer: {
+        scrubberStatus: `Timeline ${formatHours(options.run.activePlaybackTime)}`,
+        playbackTime: options.run.activePlaybackTime,
+        minPlaybackTime: 0,
+        maxPlaybackTime: 43200,
+        playbackStep: 300,
+      },
+    },
   };
 }

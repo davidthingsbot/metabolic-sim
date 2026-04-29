@@ -1,30 +1,27 @@
-import { restoreOrCreateActiveRun } from './persistence/restoreActiveRun';
+import type { Theme } from './theme';
 import type { RunRepository } from './persistence/runRepository';
 import type { Run } from './runs/types';
-import type { SystemId, Workspace } from './shellViewModel';
-
-export interface ShellAppState {
-  activeRun: Run;
-  workspace: Workspace;
-  selectedSystemId: SystemId;
-}
+import { createShellModel, type ShellModel } from './models/shellModel';
+import { createEngineHost } from './runtime/engineHost';
+import { createShellStateHost } from './runtime/shellStateHost';
 
 export interface InitializeShellAppOptions {
   repository: RunRepository;
   createDefaultRun: () => Run;
+  initialTheme: Theme;
 }
 
-export async function initializeShellApp(
-  options: InitializeShellAppOptions,
-): Promise<ShellAppState> {
-  const activeRun = await restoreOrCreateActiveRun({
+export async function initializeShellApp(options: InitializeShellAppOptions): Promise<ShellModel> {
+  const engineHost = await createEngineHost({
     repository: options.repository,
     createDefaultRun: options.createDefaultRun,
   });
+  const shellStateHost = createShellStateHost({
+    initialTheme: options.initialTheme,
+  });
 
-  return {
-    activeRun,
-    workspace: 'body-status',
-    selectedSystemId: 'whole-body',
-  };
+  return createShellModel({
+    engineHost,
+    shellStateHost,
+  });
 }

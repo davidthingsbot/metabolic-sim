@@ -26,31 +26,38 @@ class InMemoryDocumentStore implements DocumentStore {
 }
 
 describe('initializeShellApp', () => {
-  it('restores the active run and default shell selections', async () => {
+  it('restores the active run into a viewer-facing shell model', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const run = createRun({ name: 'Restored Run' });
     await repository.saveRun(run);
     await repository.setActiveRunId(run.id);
 
-    const shell = await initializeShellApp({
+    const model = await initializeShellApp({
       repository,
       createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+      initialTheme: 'dark',
     });
 
-    expect(shell.activeRun).toEqual(run);
-    expect(shell.workspace).toBe('body-status');
-    expect(shell.selectedSystemId).toBe('whole-body');
+    const snapshot = model.getSnapshot();
+
+    expect(snapshot.runName).toBe('Restored Run');
+    expect(snapshot.workspace.value).toBe('body-status');
+    expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(true);
+    expect(snapshot.bands.header.themeToggleLabel).toBe('Light mode');
   });
 
   it('creates and activates a default run when nothing is persisted yet', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
 
-    const shell = await initializeShellApp({
+    const model = await initializeShellApp({
       repository,
       createDefaultRun: () => createRun({ name: 'My First Run' }),
+      initialTheme: 'light',
     });
 
-    expect(shell.activeRun.name).toBe('My First Run');
-    await expect(repository.getActiveRunId()).resolves.toBe(shell.activeRun.id);
+    const snapshot = model.getSnapshot();
+
+    expect(snapshot.runName).toBe('My First Run');
+    await expect(repository.loadActiveRun()).resolves.toMatchObject({ name: 'My First Run' });
   });
 });

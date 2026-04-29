@@ -179,14 +179,26 @@ h3 {
   background: var(--accent-soft);
 }
 
-.shell-midsection {
+.shell-midsection-band {
   min-height: 0;
+}
+
+.shell-split.shell-midsection {
+  min-height: 100%;
   display: grid;
-  grid-template-columns: minmax(6.5rem, 7.5rem) minmax(0, 1fr);
+  grid-template-columns: minmax(6.5rem, 7.5rem) auto minmax(0, 1fr);
+}
+
+.shell-split-pane {
+  min-width: 0;
+}
+
+.shell-divider.shell-split-divider {
+  width: 1px;
+  background: var(--border);
 }
 
 .systems-rail {
-  border-right: 1px solid var(--border);
   padding: 0.85rem;
   display: grid;
   align-content: start;
@@ -258,8 +270,8 @@ h3 {
     padding: 1.1rem 1.2rem;
   }
 
-  .shell-midsection {
-    grid-template-columns: minmax(11rem, 13rem) minmax(0, 1fr);
+  .shell-split.shell-midsection {
+    grid-template-columns: minmax(11rem, 13rem) auto minmax(0, 1fr);
   }
 
   .header-controls,
