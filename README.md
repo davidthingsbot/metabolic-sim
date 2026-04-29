@@ -8,6 +8,10 @@ You drop a hamburger onto a timeline, hit play, and watch — across the bloodst
 
 It runs entirely in the browser. There is no server, no account, nothing to install.
 
+## Current status
+
+The project is no longer just a design exercise: the first simulation engine skeleton is implemented under `app/src/engine/`, with meal events, time-stepping, glucose movement, and a first insulin-response loop already running under tests. In parallel, the visual research has gone a long way toward a style I like — especially through the body-based, mobile-first, controls, and low-density exploration passes — and has clarified the overall direction of the interface. The biggest surprise so far has been how hard it is to render a convincing reusable human outline that can span different ages, both sexes, and a meaningful range of body sizes without collapsing into either uncanny illustration or a combinatorial asset problem. That outline problem has been the main thing holding back the move from visual research into the first real whole-body view.
+
 ---
 
 ## What's the point?

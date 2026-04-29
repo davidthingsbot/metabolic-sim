@@ -36,6 +36,10 @@ Research lands in `background/`. When a research note contains design-relevant d
 
 A persistent memory store lives at `/home/david/.claude/projects/-home-david-work-metabolic-sim/memory/`. Update it when you learn anything that would help a future conversation continue cleanly — project conventions, decisions, the user's preferences. Keep `MEMORY.md` (the index) terse.
 
+## Workflow note
+
+When a discrete piece of work is complete, offer the user a commit-and-push step. Do not commit or push until the user explicitly says yes.
+
 ## What not to do
 
 - Do not refactor or restructure existing files unless explicitly asked.
