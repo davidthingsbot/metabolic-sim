@@ -146,27 +146,37 @@ Substances, locations, one substance flow (blood glucose), one hormone (insulin)
 
 ---
 
-## Phase 2 — Whole Body view (Anatomical style, mobile first)
+## Phase 2 — Simulation shell, persisted runs, and first state/event view
 
 **Status:** ⬜ Not started
 
-Static SVG schematic with one quantity (blood glucose) animated. Time controls. **Compact (≤640 px) is built first end-to-end** — the Single Hamburger scenario must run to completion on a 360 × 640 phone before any larger tier is considered. Standard / Detailed / Spacious tiers add density on top of the Compact baseline; they never reorganise it. Layout positions are constant across time and density transitions (Section 4).
+Build the first real app implementation around the existing Phase 1 engine. This phase lands the mobile-first shell: **Sim Bar** (run selector, play/pause, reset, speed, resolution, scrub line), **Viewer Bar** (label mode and time-window controls), an **Events / State** main layout, named runs, browser persistence, and replayable history. The Events side includes the first schedule editor and event log, organised into **daily / alternating-days / weekly** cycle lanes with an event-detail editor below. The State side is instrument-panel style rather than anatomical — key locations with instantaneous quantity bars and small past-value charts. The data model is multi-individual-ready even though the first UI exposes one body. Meal events affect physiology immediately; the event schema and scheduling model for sleep and exercise also land here so later phases can deepen their effects without rewriting the shell.
 
-**Done when:** A user can load the page on a phone and watch blood glucose respond to a hamburger across the visible organs end-to-end without horizontal scroll. Larger viewports add detail without changing position.
+**Done when:** On a 360 × 640 phone, a user can create a named run, schedule at least a meal into a visible cycle lane, start and stop the simulation, scrub through recorded history in the same viewer, branch a new future from a historical moment, close the browser, and return to the same run where they left off.
 
 ---
 
-## Phase 3 — Full fuel handling and food library
+## Phase 3 — Whole Body view (Anatomical style, mobile first)
 
 **Status:** ⬜ Not started
 
-All substances and hormones from `background/metabolic-pathways.md`. Eating, fasting, sleeping. The food library (per `background/foods-library.md`) and meal-assembly UI with familiar units, cooked-vs-uncooked variants, composite foods, and cocktails. The Single Hamburger and Healthy Baseline scenarios run convincingly.
+Add the first anatomical Whole Body view on top of the Phase 2 shell. Static SVG schematic with one quantity (blood glucose) animated, using the already-landed Sim Bar, Viewer Bar, history, and persistence model. **Compact (≤640 px) is built first end-to-end** — the Single Hamburger scenario must run to completion on a 360 × 640 phone before any larger tier is considered. Standard / Detailed / Spacious tiers add density on top of the Compact baseline; they never reorganise it. Layout positions are constant across time and density transitions (Section 4).
+
+**Done when:** A user can load the page on a phone, stay inside the persisted-run shell from Phase 2, and watch blood glucose respond to a hamburger across the visible organs end-to-end without horizontal scroll. Larger viewports add detail without changing position.
+
+---
+
+## Phase 4 — Full fuel handling and food library
+
+**Status:** ⬜ Not started
+
+All substances and hormones from `background/metabolic-pathways.md`. Eating, fasting, sleeping. The food library (per `background/foods-library.md`) and meal-assembly UI with familiar units, cooked-vs-uncooked variants, composite foods, and cocktails. The Single Hamburger and Healthy Baseline scenarios run convincingly inside the shell established in Phase 2.
 
 **Done when:** A user can build a real meal from the library — picking foods in familiar units — and watch the body process it across all tracked substances.
 
 ---
 
-## Phase 4 — Exercise, recovery, and the Fuel Flows view
+## Phase 5 — Exercise, recovery, and the Fuel Flows view
 
 **Status:** ⬜ Not started
 
@@ -176,17 +186,17 @@ Exercise as a calendar event affecting all the right flows, with the recovery dy
 
 ---
 
-## Phase 5 — Save, load, and history
+## Phase 6 — Advanced history, branching UX, and timeline polish
 
 **Status:** ⬜ Not started
 
-Full state save/load (IndexedDB and JSON file). History buffer with progressive compression. Backward play. Event log. Timeline scrubber.
+Take the Phase 2 persistence/history foundation to full v1 depth: progressive history compression, richer branch management for alternative futures, stronger event-log browsing, jump-to-event polish, explicit bookmark workflows, and JSON import/export around named runs. The shell already supports replay and resume; this phase makes the long-run and many-run experience durable and comfortable.
 
-**Done when:** A user can save mid-run, load later, scrub backwards through any past moment, and see every event in the log.
+**Done when:** A user can manage several named runs, inspect alternative futures cleanly, keep long simulations without storage pain, and move through history and event logs fluidly.
 
 ---
 
-## Phase 6 — Long-term effects, Health, and aging
+## Phase 7 — Long-term effects, Health, and aging
 
 **Status:** ⬜ Not started
 
@@ -196,7 +206,7 @@ Tissue remodeling, body composition, muscle mass and tone, vessel wall health, p
 
 ---
 
-## Phase 7 — Foreign substances: alcohol, tobacco, medications, recreational drugs
+## Phase 8 — Foreign substances: alcohol, tobacco, medications, recreational drugs
 
 **Status:** ⬜ Not started
 
@@ -206,17 +216,17 @@ Foreign Substance table added to the engine. Beverage and drug libraries. Acute 
 
 ---
 
-## Phase 8 — Multiple individuals
+## Phase 9 — Multiple individuals
 
 **Status:** ⬜ Not started
 
-Multi-worker engine, side-by-side view, shared and per-individual calendars. Comparing Different Individuals and Comparing Lifestyles scenarios.
+Expose the multi-worker, multi-individual model the shell has carried from Phase 2. Side-by-side view, shared and per-individual calendars, and overlaid charts. Comparing Different Individuals and Comparing Lifestyles scenarios.
 
 **Done when:** A user can run two to six bodies side by side on the same clock and see them diverge.
 
 ---
 
-## Phase 9 — Life stages and From Birth
+## Phase 10 — Life stages and From Birth
 
 **Status:** ⬜ Not started
 
@@ -226,7 +236,7 @@ Age-dependent engine parameters, life-stage transitions and labelling, age-gatin
 
 ---
 
-## Phase 10 — Recordings, Hormones view, charts, alternative visual styles, scenario sharing
+## Phase 11 — Recordings, Hormones view, charts, alternative visual styles, scenario sharing
 
 **Status:** ⬜ Not started
 
@@ -236,7 +246,7 @@ Recording export (WebM and frame-sequence ZIP). Additional visual styles added a
 
 ---
 
-## Phase 11 — Onboarding and documentation
+## Phase 12 — Onboarding and documentation
 
 **Status:** ⬜ Not started
 
@@ -261,4 +271,4 @@ These are described in `design.md` but are not in v1's path:
 
 Track substantive changes to the plan here so future-you can see why the order shifted.
 
-- *(no entries yet)*
+- 2026-04-29 — Inserted a new **Phase 2 — Simulation shell, persisted runs, and first state/event view** ahead of the anatomical Whole Body work. Reason: the first app implementation needs a durable mobile-first run shell (Sim Bar, Viewer Bar, history, persistence, event scheduling, and branching replay) before the anatomical rendering layer lands. Renumbered later phases accordingly and narrowed the later history phase to advanced compression / branching / timeline polish rather than first delivery of save-load itself.
