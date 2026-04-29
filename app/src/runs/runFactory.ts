@@ -1,6 +1,13 @@
-import { applyEvent } from '../engine/events';
 import { createInitialState } from '../engine/state';
-import type { CreateRunOptions, IndividualRunState, Run, RunHistory, ScheduleLane } from './types';
+import type {
+  CreateRunOptions,
+  IndividualRunState,
+  Run,
+  RunHistory,
+  ScheduleLane,
+  ScheduledActivity,
+  ScheduledMealActivity,
+} from './types';
 
 function createId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -14,13 +21,19 @@ function createDefaultScheduleLanes(): ScheduleLane[] {
   ];
 }
 
-function createDefaultIndividuals(initialMealCarbsGrams = 0): IndividualRunState[] {
+function createScheduledMealActivity(laneId: string, options: NonNullable<CreateRunOptions['initialMeal']>): ScheduledMealActivity {
+  return {
+    id: createId('activity'),
+    laneId,
+    type: 'meal',
+    startPlaybackTime: options.startPlaybackTime,
+    durationMinutes: options.durationMinutes,
+    carbsGrams: options.carbsGrams,
+  };
+}
+
+function createDefaultIndividuals(): IndividualRunState[] {
   const state = createInitialState();
-
-  if (initialMealCarbsGrams > 0) {
-    applyEvent(state, { type: 'meal', carbsGrams: initialMealCarbsGrams });
-  }
-
   return [
     {
       id: createId('individual'),
@@ -42,24 +55,35 @@ function createInitialHistory(individuals: IndividualRunState[], playbackTime: n
 }
 
 export function ensureRunHistory(run: Run): Run {
+  const scheduledActivities = Array.isArray(run.scheduledActivities) ? run.scheduledActivities : [];
+
   if (run.history?.checkpoints?.length) {
-    return run;
+    return {
+      ...run,
+      scheduledActivities,
+    };
   }
 
   return {
     ...run,
+    scheduledActivities,
     history: createInitialHistory(run.individuals, run.activePlaybackTime),
   };
 }
 
 export function createRun(options: CreateRunOptions): Run {
-  const individuals = createDefaultIndividuals(options.initialMealCarbsGrams);
+  const scheduleLanes = createDefaultScheduleLanes();
+  const individuals = createDefaultIndividuals();
+  const scheduledActivities: ScheduledActivity[] = options.initialMeal
+    ? [createScheduledMealActivity(scheduleLanes[0].id, options.initialMeal)]
+    : [];
 
   return ensureRunHistory({
     id: createId('run'),
     name: options.name,
     individuals,
-    scheduleLanes: createDefaultScheduleLanes(),
+    scheduleLanes,
+    scheduledActivities,
     activePlaybackTime: 0,
     history: createInitialHistory(individuals, 0),
   });

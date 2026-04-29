@@ -167,12 +167,21 @@ describe('createEngineHost', () => {
     expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0]);
   });
 
-  it('steps playback by evolving the recorded run state and persisting the evolved checkpoint', async () => {
+  it('steps playback on the one-minute clock, applying only each active meal minute and persisting minute checkpoints', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
-    const seededRun = createRun({ name: 'Stepping Run' });
-    seededRun.individuals[0].state.substances.glucose.gut = 50;
+    const seededRun = createRun({
+      name: 'Stepping Run',
+      initialMeal: {
+        startPlaybackTime: 0,
+        durationMinutes: 5,
+        carbsGrams: 50,
+      },
+    });
     const expectedState = structuredClone(seededRun.individuals[0].state);
-    step(expectedState, 300);
+    for (let minute = 0; minute < 5; minute += 1) {
+      expectedState.substances.glucose.gut += 10;
+      step(expectedState, 60);
+    }
     await repository.saveRun(seededRun);
     await repository.setActiveRunId(seededRun.id);
 
@@ -189,11 +198,16 @@ describe('createEngineHost', () => {
     expect(snapshot.activeRun.activePlaybackTime).toBe(300);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
     expect(checkpoint?.individuals[0].state).toEqual(expectedState);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
     await expect(repository.loadActiveRun()).resolves.toMatchObject({
       activePlaybackTime: 300,
       history: {
         checkpoints: [
           expect.objectContaining({ playbackTime: 0 }),
+          expect.objectContaining({ playbackTime: 60 }),
+          expect.objectContaining({ playbackTime: 120 }),
+          expect.objectContaining({ playbackTime: 180 }),
+          expect.objectContaining({ playbackTime: 240 }),
           expect.objectContaining({ playbackTime: 300 }),
         ],
       },

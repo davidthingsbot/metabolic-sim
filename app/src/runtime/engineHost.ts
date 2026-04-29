@@ -1,8 +1,10 @@
 import { restoreOrCreateActiveRun } from '../persistence/restoreActiveRun';
+import { applyEvent } from '../engine/events';
 import { step } from '../engine/step';
 import type { RunRepository } from '../persistence/runRepository';
 import { branchRunFromSnapshot } from '../runs/branchRun';
 import { ensureRunHistory } from '../runs/runFactory';
+import { getMealCarbsForPlaybackWindow, getScheduledMealActivities } from '../runs/scheduledActivities';
 import type { Run, RunHistoryCheckpoint } from '../runs/types';
 
 export interface EngineHostSnapshot {
@@ -54,6 +56,23 @@ function restoreCheckpoint(run: Run, playbackTime: number): boolean {
 
   run.individuals = structuredClone(checkpoint.individuals);
   return true;
+}
+
+function applyScheduledActivitiesForPlaybackWindow(run: Run, playbackTime: number, stepSeconds: number): void {
+  const mealActivities = getScheduledMealActivities(run.scheduledActivities);
+
+  if (!mealActivities.length) {
+    return;
+  }
+
+  run.individuals.forEach((individual) => {
+    mealActivities.forEach((activity) => {
+      const carbsGrams = getMealCarbsForPlaybackWindow(activity, playbackTime, stepSeconds);
+      if (carbsGrams > 0) {
+        applyEvent(individual.state, { type: 'meal', carbsGrams });
+      }
+    });
+  });
 }
 
 export async function createEngineHost(options: CreateEngineHostOptions): Promise<EngineHost> {
@@ -133,14 +152,20 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
     },
     async stepPlayback(stepSeconds = 300) {
       await commit((draft) => {
-        const nextPlaybackTime = draft.activePlaybackTime + stepSeconds;
-        draft.activePlaybackTime = nextPlaybackTime;
+        let remainingStepSeconds = stepSeconds;
 
-        draft.individuals.forEach((individual) => {
-          step(individual.state, stepSeconds);
-        });
+        while (remainingStepSeconds > 0) {
+          const minuteStepSeconds = Math.min(60, remainingStepSeconds);
+          applyScheduledActivitiesForPlaybackWindow(draft, draft.activePlaybackTime, minuteStepSeconds);
 
-        upsertHistoryCheckpoint(draft, nextPlaybackTime);
+          draft.individuals.forEach((individual) => {
+            step(individual.state, minuteStepSeconds);
+          });
+
+          draft.activePlaybackTime += minuteStepSeconds;
+          upsertHistoryCheckpoint(draft, draft.activePlaybackTime);
+          remainingStepSeconds -= minuteStepSeconds;
+        }
       });
     },
   };

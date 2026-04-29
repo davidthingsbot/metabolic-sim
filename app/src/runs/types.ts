@@ -29,11 +29,26 @@ export interface RunLineage {
   branchedAtPlaybackTime: number;
 }
 
+export interface ScheduledActivityBase {
+  id: string;
+  laneId: string;
+  startPlaybackTime: number;
+  durationMinutes: number;
+}
+
+export interface ScheduledMealActivity extends ScheduledActivityBase {
+  type: 'meal';
+  carbsGrams: number;
+}
+
+export type ScheduledActivity = ScheduledMealActivity;
+
 export interface Run {
   id: string;
   name: string;
   individuals: IndividualRunState[];
   scheduleLanes: ScheduleLane[];
+  scheduledActivities: ScheduledActivity[];
   activePlaybackTime: number;
   history: RunHistory;
   lineage?: RunLineage;
@@ -41,5 +56,9 @@ export interface Run {
 
 export interface CreateRunOptions {
   name: string;
-  initialMealCarbsGrams?: number;
+  initialMeal?: {
+    startPlaybackTime: number;
+    durationMinutes: number;
+    carbsGrams: number;
+  };
 }

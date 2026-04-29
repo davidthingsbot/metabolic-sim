@@ -35,13 +35,25 @@ describe('createRun', () => {
     expect(run.individuals[0].name).toBe('Body 1');
   });
 
-  it('can seed a new run with initial gut glucose so first playback steps are visibly meaningful', () => {
+  it('can seed a new run with a scheduled meal activity so first playback steps are visibly meaningful', () => {
     const run = createRun({
       name: 'Seeded Run',
-      initialMealCarbsGrams: 50,
+      initialMeal: {
+        startPlaybackTime: 0,
+        durationMinutes: 30,
+        carbsGrams: 50,
+      },
     });
 
-    expect(run.individuals[0].state.substances.glucose.gut).toBe(50);
+    expect(run.individuals[0].state.substances.glucose.gut).toBe(0);
+    expect(run.scheduledActivities).toEqual([
+      expect.objectContaining({
+        type: 'meal',
+        startPlaybackTime: 0,
+        durationMinutes: 30,
+        carbsGrams: 50,
+      }),
+    ]);
     expect(run.history.checkpoints).toEqual([
       {
         playbackTime: 0,
@@ -65,5 +77,6 @@ describe('createRun', () => {
         individuals: normalizedRun.individuals,
       },
     ]);
+    expect(normalizedRun.scheduledActivities).toEqual([]);
   });
 });

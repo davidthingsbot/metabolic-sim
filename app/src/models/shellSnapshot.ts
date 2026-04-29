@@ -120,15 +120,20 @@ function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[]
 
 function createPlannerCards(run: Run): ShellDetailCard[] {
   const laneNames = run.scheduleLanes.map((lane) => lane.name).join(' · ');
+  const mealActivities = run.scheduledActivities.filter((activity) => activity.type === 'meal');
+  const selectedMeal = mealActivities[0];
+  const mealCountLabel = `${mealActivities.length} scheduled meal${mealActivities.length === 1 ? '' : 's'}`;
 
   return [
     {
       title: 'Planner timeline',
-      body: `Placeholder scheduler for ${run.scheduleLanes.length} repeating lanes: ${laneNames}.`,
+      body: `Planner tracks ${mealCountLabel} across ${run.scheduleLanes.length} repeating lanes: ${laneNames}.`,
     },
     {
       title: 'Selected lane',
-      body: 'Direct grid editing and event forms land next. This shell keeps the dedicated planner workspace and persisted run underneath it.',
+      body: selectedMeal
+        ? `Meal starts at ${formatHours(selectedMeal.startPlaybackTime)}, runs for ${selectedMeal.durationMinutes} min, and contributes ${selectedMeal.carbsGrams.toFixed(1)} g carbs over ${selectedMeal.durationMinutes} min.`
+        : 'No meal scheduled yet. Direct grid editing and event forms land next; this slice wires one duration-based meal through the same persisted run timeline.',
     },
     {
       title: 'Next planner actions',

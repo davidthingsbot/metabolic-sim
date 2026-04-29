@@ -28,7 +28,11 @@ async function mountApp(): Promise<void> {
       createDefaultRun: () =>
         createRun({
           name: createDefaultRunName(),
-          initialMealCarbsGrams: 50,
+          initialMeal: {
+            startPlaybackTime: 0,
+            durationMinutes: 30,
+            carbsGrams: 50,
+          },
         }),
       initialTheme,
     });

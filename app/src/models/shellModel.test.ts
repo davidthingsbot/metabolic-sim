@@ -3,7 +3,14 @@ import { createRun } from '../runs/runFactory';
 import { createShellModel } from './shellModel';
 
 function createSampleRun() {
-  const run = createRun({ name: 'Lunch Replay' });
+  const run = createRun({
+    name: 'Lunch Replay',
+    initialMeal: {
+      startPlaybackTime: 5400,
+      durationMinutes: 30,
+      carbsGrams: 45,
+    },
+  });
   run.individuals[0].state.substances.glucose.blood = 6.2;
   run.individuals[0].state.substances.glucose.gut = 12.4;
   run.individuals[0].state.substances.glucose.cells = 18.6;
@@ -191,6 +198,8 @@ describe('createShellModel', () => {
       'Selected lane',
       'Next planner actions',
     ]);
+    expect(snapshot.bands.midsection.detailCards[0].body).toContain('1 scheduled meal');
+    expect(snapshot.bands.midsection.detailCards[1].body).toContain('45.0 g carbs over 30 min');
     expect(snapshot.bands.footer.playbackTime).toBe(5700);
     expect(snapshot.bands.footer.scrubberStatus).toContain('2 checkpoints');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 8.5 g');
