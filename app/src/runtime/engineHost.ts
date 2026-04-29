@@ -1,4 +1,5 @@
 import { restoreOrCreateActiveRun } from '../persistence/restoreActiveRun';
+import { step } from '../engine/step';
 import type { RunRepository } from '../persistence/runRepository';
 import { branchRunFromSnapshot } from '../runs/branchRun';
 import { ensureRunHistory } from '../runs/runFactory';
@@ -134,13 +135,11 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
       await commit((draft) => {
         const nextPlaybackTime = draft.activePlaybackTime + stepSeconds;
         draft.activePlaybackTime = nextPlaybackTime;
-        draft.individuals = draft.individuals.map((individual) => ({
-          ...individual,
-          state: {
-            ...individual.state,
-            simulatedTime: nextPlaybackTime,
-          },
-        }));
+
+        draft.individuals.forEach((individual) => {
+          step(individual.state, stepSeconds);
+        });
+
         upsertHistoryCheckpoint(draft, nextPlaybackTime);
       });
     },

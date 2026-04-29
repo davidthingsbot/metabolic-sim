@@ -35,6 +35,21 @@ describe('createRun', () => {
     expect(run.individuals[0].name).toBe('Body 1');
   });
 
+  it('can seed a new run with initial gut glucose so first playback steps are visibly meaningful', () => {
+    const run = createRun({
+      name: 'Seeded Run',
+      initialMealCarbsGrams: 50,
+    });
+
+    expect(run.individuals[0].state.substances.glucose.gut).toBe(50);
+    expect(run.history.checkpoints).toEqual([
+      {
+        playbackTime: 0,
+        individuals: run.individuals,
+      },
+    ]);
+  });
+
   it('backfills missing history for older persisted runs', () => {
     const run = createRun({ name: 'Legacy Run' });
     const legacyRun = {

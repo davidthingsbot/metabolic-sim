@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { step } from '../engine/step';
 import { createRun } from '../runs/runFactory';
 import { createRunRepository, type DocumentStore, type RunRepository } from '../persistence/runRepository';
 import { createEngineHost } from './engineHost';
@@ -164,6 +165,39 @@ describe('createEngineHost', () => {
     });
 
     expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0]);
+  });
+
+  it('steps playback by evolving the recorded run state and persisting the evolved checkpoint', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Stepping Run' });
+    seededRun.individuals[0].state.substances.glucose.gut = 50;
+    const expectedState = structuredClone(seededRun.individuals[0].state);
+    step(expectedState, 300);
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.stepPlayback(300);
+
+    const snapshot = host.getSnapshot();
+    const checkpoint = snapshot.activeRun.history.checkpoints.find((entry) => entry.playbackTime === 300);
+
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
+    expect(checkpoint?.individuals[0].state).toEqual(expectedState);
+    await expect(repository.loadActiveRun()).resolves.toMatchObject({
+      activePlaybackTime: 300,
+      history: {
+        checkpoints: [
+          expect.objectContaining({ playbackTime: 0 }),
+          expect.objectContaining({ playbackTime: 300 }),
+        ],
+      },
+    });
   });
 
   it('branches the active run from a recorded checkpoint, persists the new run, and switches authority to it', async () => {

@@ -1,3 +1,4 @@
+import { applyEvent } from '../engine/events';
 import { createInitialState } from '../engine/state';
 import type { CreateRunOptions, IndividualRunState, Run, RunHistory, ScheduleLane } from './types';
 
@@ -13,12 +14,18 @@ function createDefaultScheduleLanes(): ScheduleLane[] {
   ];
 }
 
-function createDefaultIndividuals(): IndividualRunState[] {
+function createDefaultIndividuals(initialMealCarbsGrams = 0): IndividualRunState[] {
+  const state = createInitialState();
+
+  if (initialMealCarbsGrams > 0) {
+    applyEvent(state, { type: 'meal', carbsGrams: initialMealCarbsGrams });
+  }
+
   return [
     {
       id: createId('individual'),
       name: 'Body 1',
-      state: createInitialState(),
+      state,
     },
   ];
 }
@@ -46,7 +53,7 @@ export function ensureRunHistory(run: Run): Run {
 }
 
 export function createRun(options: CreateRunOptions): Run {
-  const individuals = createDefaultIndividuals();
+  const individuals = createDefaultIndividuals(options.initialMealCarbsGrams);
 
   return ensureRunHistory({
     id: createId('run'),

@@ -41,4 +41,5 @@ export interface Run {
 
 export interface CreateRunOptions {
   name: string;
+  initialMealCarbsGrams?: number;
 }

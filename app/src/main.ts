@@ -25,7 +25,11 @@ async function mountApp(): Promise<void> {
   try {
     const model = await initializeShellApp({
       repository: createBrowserRunRepository(),
-      createDefaultRun: () => createRun({ name: createDefaultRunName() }),
+      createDefaultRun: () =>
+        createRun({
+          name: createDefaultRunName(),
+          initialMealCarbsGrams: 50,
+        }),
       initialTheme,
     });
 
