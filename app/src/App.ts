@@ -29,6 +29,7 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onSelectWorkspace: (workspace) => model.setWorkspace(workspace),
     onSelectSystem: (systemId) => model.selectSystem(systemId),
     onSetPlaybackTime: (playbackTime) => void model.setPlaybackTime(playbackTime),
+    onStepPlayback: () => void model.stepPlayback(),
     onToggleTheme: toggleTheme,
   });
 };

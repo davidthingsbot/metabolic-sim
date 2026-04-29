@@ -4,15 +4,16 @@ import type { ShellSnapshot } from '../../models/shellSnapshot';
 export interface ShellFooterViewProps {
   snapshot: ShellSnapshot;
   onSetPlaybackTime: (playbackTime: number) => void;
+  onStepPlayback: () => void;
 }
 
-export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({ snapshot, onSetPlaybackTime }) =>
+export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({ snapshot, onSetPlaybackTime, onStepPlayback }) =>
   h('div', { class: 'footer-controls' }, [
     h('div', { class: 'control-cluster' }, [
       h('span', { class: 'control-label' }, 'Experiment'),
       h('div', { class: 'chip-row' }, [
         h('button', { class: 'control-chip', type: 'button' }, 'Play'),
-        h('button', { class: 'control-chip', type: 'button' }, 'Step'),
+        h('button', { class: 'control-chip', type: 'button', onClick: onStepPlayback }, 'Step'),
         h('button', { class: 'control-chip', type: 'button' }, 'Branch'),
       ]),
     ]),
@@ -26,9 +27,15 @@ export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({ sna
         type: 'range',
         min: snapshot.bands.footer.minPlaybackTime,
         max: snapshot.bands.footer.maxPlaybackTime,
-        value: snapshot.bands.footer.playbackTime,
+        value: snapshot.bands.footer.selectedCheckpointIndex,
         step: snapshot.bands.footer.playbackStep,
-        onInput: (event) => onSetPlaybackTime(Number((event.currentTarget as HTMLInputElement).value)),
+        onInput: (event) => {
+          const checkpointIndex = Number((event.currentTarget as HTMLInputElement).value);
+          const checkpointTime = snapshot.bands.footer.checkpointTimes[checkpointIndex];
+          if (checkpointTime !== undefined) {
+            onSetPlaybackTime(checkpointTime);
+          }
+        },
       }),
     ]),
   ]);

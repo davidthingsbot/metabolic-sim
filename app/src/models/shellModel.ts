@@ -10,6 +10,7 @@ export interface ShellModel {
   selectSystem(systemId: SystemId): void;
   setTheme(theme: Theme): void;
   setPlaybackTime(playbackTime: number): Promise<void>;
+  stepPlayback(stepSeconds?: number): Promise<void>;
 }
 
 export interface CreateShellModelOptions {
@@ -60,9 +61,10 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
       options.shellStateHost.setTheme(nextTheme);
     },
     async setPlaybackTime(playbackTime) {
-      await options.engineHost.updateActiveRun((draft) => {
-        draft.activePlaybackTime = playbackTime;
-      });
+      await options.engineHost.restorePlaybackTime(playbackTime);
+    },
+    async stepPlayback(stepSeconds = 300) {
+      await options.engineHost.stepPlayback(stepSeconds);
     },
   };
 }

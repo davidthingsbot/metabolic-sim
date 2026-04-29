@@ -114,4 +114,55 @@ describe('createEngineHost', () => {
       activePlaybackTime: 600,
     });
   });
+
+  it('records history checkpoints and restores exact recorded playback snapshots', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'History Run' }),
+    });
+
+    await host.updateActiveRun((draft) => {
+      draft.activePlaybackTime = 300;
+      draft.individuals[0].state.simulatedTime = 300;
+      draft.individuals[0].state.substances.glucose.blood = 7.5;
+    });
+    await host.recordHistoryCheckpoint();
+
+    await host.updateActiveRun((draft) => {
+      draft.activePlaybackTime = 600;
+      draft.individuals[0].state.simulatedTime = 600;
+      draft.individuals[0].state.substances.glucose.blood = 9.1;
+    });
+    await host.recordHistoryCheckpoint();
+
+    await host.updateActiveRun((draft) => {
+      draft.activePlaybackTime = 900;
+      draft.individuals[0].state.simulatedTime = 900;
+      draft.individuals[0].state.substances.glucose.blood = 11.2;
+    });
+
+    await host.restorePlaybackTime(300);
+
+    const snapshot = host.getSnapshot();
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.individuals[0].state.simulatedTime).toBe(300);
+    expect(snapshot.activeRun.individuals[0].state.substances.glucose.blood).toBe(7.5);
+    expect(snapshot.activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0, 300, 600]);
+  });
+
+  it('backfills history for older persisted runs that did not yet have checkpoints', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const legacyRun = createRun({ name: 'Legacy Run' });
+    const persistedLegacyRun = { ...legacyRun, history: undefined } as unknown as typeof legacyRun;
+    await repository.saveRun(persistedLegacyRun);
+    await repository.setActiveRunId(persistedLegacyRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0]);
+  });
 });

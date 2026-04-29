@@ -49,6 +49,8 @@ export interface ShellSnapshot {
       minPlaybackTime: number;
       maxPlaybackTime: number;
       playbackStep: number;
+      checkpointTimes: number[];
+      selectedCheckpointIndex: number;
     };
   };
 }
@@ -76,6 +78,23 @@ function formatHours(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+}
+
+function createScrubberStatus(run: Run): string {
+  const checkpointTimes = run.history.checkpoints.map((checkpoint) => checkpoint.playbackTime);
+  const firstCheckpointTime = checkpointTimes[0] ?? run.activePlaybackTime;
+  const lastCheckpointTime = checkpointTimes[checkpointTimes.length - 1] ?? run.activePlaybackTime;
+
+  return `Timeline ${formatHours(run.activePlaybackTime)} · ${checkpointTimes.length} checkpoints · Recorded ${formatHours(firstCheckpointTime)}–${formatHours(lastCheckpointTime)}`;
+}
+
+function createMaxPlaybackTime(run: Run): number {
+  return Math.max(run.history.checkpoints.length - 1, 0);
+}
+
+function createSelectedCheckpointIndex(run: Run): number {
+  const selectedIndex = run.history.checkpoints.findIndex((checkpoint) => checkpoint.playbackTime === run.activePlaybackTime);
+  return selectedIndex >= 0 ? selectedIndex : 0;
 }
 
 function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[] {
@@ -163,11 +182,13 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
             : createPlannerCards(options.run),
       },
       footer: {
-        scrubberStatus: `Timeline ${formatHours(options.run.activePlaybackTime)}`,
+        scrubberStatus: createScrubberStatus(options.run),
         playbackTime: options.run.activePlaybackTime,
         minPlaybackTime: 0,
-        maxPlaybackTime: 43200,
-        playbackStep: 300,
+        maxPlaybackTime: createMaxPlaybackTime(options.run),
+        playbackStep: 1,
+        checkpointTimes: options.run.history.checkpoints.map((checkpoint) => checkpoint.playbackTime),
+        selectedCheckpointIndex: createSelectedCheckpointIndex(options.run),
       },
     },
   };

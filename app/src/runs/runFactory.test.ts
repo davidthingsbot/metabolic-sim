@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createRun } from './runFactory';
+import { createRun, ensureRunHistory } from './runFactory';
 
 describe('createRun', () => {
   it('creates a named run with one default individual', () => {
@@ -10,6 +10,12 @@ describe('createRun', () => {
     expect(run.individuals[0].id).toBeTruthy();
     expect(run.individuals[0].state.simulatedTime).toBe(0);
     expect(run.activePlaybackTime).toBe(0);
+    expect(run.history.checkpoints).toEqual([
+      {
+        playbackTime: 0,
+        individuals: run.individuals,
+      },
+    ]);
   });
 
   it('starts with a daily, alternating-days, and weekly schedule lane', () => {
@@ -27,5 +33,22 @@ describe('createRun', () => {
 
     expect(Array.isArray(run.individuals)).toBe(true);
     expect(run.individuals[0].name).toBe('Body 1');
+  });
+
+  it('backfills missing history for older persisted runs', () => {
+    const run = createRun({ name: 'Legacy Run' });
+    const legacyRun = {
+      ...run,
+      history: undefined,
+    } as unknown as typeof run;
+
+    const normalizedRun = ensureRunHistory(legacyRun);
+
+    expect(normalizedRun.history.checkpoints).toEqual([
+      {
+        playbackTime: 0,
+        individuals: normalizedRun.individuals,
+      },
+    ]);
   });
 });

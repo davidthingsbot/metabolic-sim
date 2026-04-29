@@ -14,12 +14,22 @@ export interface IndividualRunState {
   state: State;
 }
 
+export interface RunHistoryCheckpoint {
+  playbackTime: number;
+  individuals: IndividualRunState[];
+}
+
+export interface RunHistory {
+  checkpoints: RunHistoryCheckpoint[];
+}
+
 export interface Run {
   id: string;
   name: string;
   individuals: IndividualRunState[];
   scheduleLanes: ScheduleLane[];
   activePlaybackTime: number;
+  history: RunHistory;
 }
 
 export interface CreateRunOptions {

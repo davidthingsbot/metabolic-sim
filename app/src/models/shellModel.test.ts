@@ -30,6 +30,51 @@ function createStubSession(run = createSampleRun()) {
       activeRun = draft;
       listeners.forEach((listener) => listener());
     },
+    async restorePlaybackTime(playbackTime: number) {
+      const checkpoint = activeRun.history.checkpoints.find((entry) => entry.playbackTime === playbackTime);
+      if (!checkpoint) {
+        return;
+      }
+      const draft = structuredClone(activeRun);
+      draft.activePlaybackTime = playbackTime;
+      draft.individuals = structuredClone(checkpoint.individuals);
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async recordHistoryCheckpoint(playbackTime = activeRun.activePlaybackTime) {
+      const draft = structuredClone(activeRun);
+      draft.activePlaybackTime = playbackTime;
+      const existingIndex = draft.history.checkpoints.findIndex((entry) => entry.playbackTime === playbackTime);
+      const checkpoint = {
+        playbackTime,
+        individuals: structuredClone(draft.individuals),
+      };
+      if (existingIndex >= 0) {
+        draft.history.checkpoints[existingIndex] = checkpoint;
+      } else {
+        draft.history.checkpoints.push(checkpoint);
+      }
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async stepPlayback(stepSeconds = 300) {
+      const draft = structuredClone(activeRun);
+      const nextPlaybackTime = draft.activePlaybackTime + stepSeconds;
+      draft.activePlaybackTime = nextPlaybackTime;
+      draft.individuals = draft.individuals.map((individual) => ({
+        ...individual,
+        state: {
+          ...individual.state,
+          simulatedTime: nextPlaybackTime,
+        },
+      }));
+      draft.history.checkpoints.push({
+        playbackTime: nextPlaybackTime,
+        individuals: structuredClone(draft.individuals),
+      });
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
   };
 }
 
@@ -103,7 +148,7 @@ describe('createShellModel', () => {
 
     shellStateHost.setWorkspace('event-planner');
     shellStateHost.selectSystem('blood-system');
-    await model.setPlaybackTime(7200);
+    await model.stepPlayback();
     await engineHost.updateActiveRun((draft) => {
       draft.individuals[0].state.substances.glucose.blood = 8.5;
     });
@@ -118,8 +163,42 @@ describe('createShellModel', () => {
       'Selected lane',
       'Next planner actions',
     ]);
-    expect(snapshot.bands.footer.playbackTime).toBe(7200);
+    expect(snapshot.bands.footer.playbackTime).toBe(5700);
+    expect(snapshot.bands.footer.scrubberStatus).toContain('2 checkpoints');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 8.5 g');
     expect(viewerEvents).toHaveLength(4);
+  });
+
+  it('restores the authoritative run state from recorded history when scrubbing to an exact checkpoint', async () => {
+    const run = createSampleRun();
+    run.history.checkpoints.push({
+      playbackTime: 1800,
+      individuals: [
+        {
+          ...structuredClone(run.individuals[0]),
+          state: {
+            ...structuredClone(run.individuals[0].state),
+            simulatedTime: 1800,
+            substances: {
+              glucose: {
+                gut: 4.2,
+                blood: 5.8,
+                cells: 8.4,
+              },
+            },
+          },
+        },
+      ],
+    });
+    const model = createShellModel({
+      engineHost: createStubSession(run),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    await model.setPlaybackTime(1800);
+
+    const snapshot = model.getSnapshot();
+    expect(snapshot.bands.footer.playbackTime).toBe(1800);
+    expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 5.8 g');
   });
 });
