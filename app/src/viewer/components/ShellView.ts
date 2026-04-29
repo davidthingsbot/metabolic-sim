@@ -11,6 +11,7 @@ export interface ShellViewProps {
   onSelectSystem: (systemId: SystemId) => void;
   onSetPlaybackTime: (playbackTime: number) => void;
   onStepPlayback: () => void;
+  onBranchPlaybackTime: (playbackTime: number) => void;
   onToggleTheme: () => void;
 }
 
@@ -20,6 +21,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   onSelectSystem,
   onSetPlaybackTime,
   onStepPlayback,
+  onBranchPlaybackTime,
   onToggleTheme,
 }) =>
   h('div', { class: 'shell-app' }, [
@@ -40,6 +42,6 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
     h(BandView, {
       as: 'footer',
       className: 'shell-footer',
-      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback }),
+      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback, onBranchPlaybackTime }),
     }),
   ]);

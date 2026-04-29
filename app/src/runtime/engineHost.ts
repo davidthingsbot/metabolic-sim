@@ -1,5 +1,6 @@
 import { restoreOrCreateActiveRun } from '../persistence/restoreActiveRun';
 import type { RunRepository } from '../persistence/runRepository';
+import { branchRunFromSnapshot } from '../runs/branchRun';
 import { ensureRunHistory } from '../runs/runFactory';
 import type { Run, RunHistoryCheckpoint } from '../runs/types';
 
@@ -13,6 +14,7 @@ export interface EngineHost {
   updateActiveRun(update: (draft: Run) => void): Promise<void>;
   recordHistoryCheckpoint(playbackTime?: number): Promise<void>;
   restorePlaybackTime(playbackTime: number): Promise<void>;
+  branchActiveRunFromPlaybackTime(playbackTime: number, runName?: string): Promise<void>;
   stepPlayback(stepSeconds?: number): Promise<void>;
 }
 
@@ -82,6 +84,18 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
     await nextUpdate;
   }
 
+  async function replaceActiveRun(nextRun: Run): Promise<void> {
+    const nextUpdate = pendingUpdate.then(async () => {
+      activeRun = ensureRunHistory(structuredClone(nextRun));
+      await options.repository.saveRun(activeRun);
+      await options.repository.setActiveRunId(activeRun.id);
+      emit();
+    });
+
+    pendingUpdate = nextUpdate.catch(() => undefined);
+    await nextUpdate;
+  }
+
   return {
     getSnapshot() {
       return {
@@ -107,6 +121,14 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
           return;
         }
       });
+    },
+    async branchActiveRunFromPlaybackTime(playbackTime, runName) {
+      const nextRun = branchRunFromSnapshot({
+        sourceRun: activeRun,
+        branchedName: runName ?? `${activeRun.name} Branch`,
+        snapshotTime: playbackTime,
+      });
+      await replaceActiveRun(nextRun);
     },
     async stepPlayback(stepSeconds = 300) {
       await commit((draft) => {

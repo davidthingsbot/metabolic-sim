@@ -30,6 +30,7 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onSelectSystem: (systemId) => model.selectSystem(systemId),
     onSetPlaybackTime: (playbackTime) => void model.setPlaybackTime(playbackTime),
     onStepPlayback: () => void model.stepPlayback(),
+    onBranchPlaybackTime: (playbackTime) => void model.branchActiveRunFromPlaybackTime(playbackTime),
     onToggleTheme: toggleTheme,
   });
 };

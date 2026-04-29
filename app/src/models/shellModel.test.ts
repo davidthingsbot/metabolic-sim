@@ -57,6 +57,34 @@ function createStubSession(run = createSampleRun()) {
       activeRun = draft;
       listeners.forEach((listener) => listener());
     },
+    async branchActiveRunFromPlaybackTime(playbackTime: number, runName?: string) {
+      const checkpoint = activeRun.history.checkpoints.find((entry) => entry.playbackTime === playbackTime);
+      if (!checkpoint) {
+        throw new Error(`Cannot branch run from missing checkpoint at playback time ${playbackTime}`);
+      }
+
+      activeRun = {
+        ...structuredClone(activeRun),
+        id: 'branched-run',
+        name: runName ?? `${activeRun.name} Branch`,
+        activePlaybackTime: playbackTime,
+        individuals: structuredClone(checkpoint.individuals),
+        history: {
+          checkpoints: [
+            {
+              playbackTime,
+              individuals: structuredClone(checkpoint.individuals),
+            },
+          ],
+        },
+        lineage: {
+          parentRunId: activeRun.id,
+          parentCheckpointTime: playbackTime,
+          branchedAtPlaybackTime: playbackTime,
+        },
+      };
+      listeners.forEach((listener) => listener());
+    },
     async stepPlayback(stepSeconds = 300) {
       const draft = structuredClone(activeRun);
       const nextPlaybackTime = draft.activePlaybackTime + stepSeconds;
@@ -200,5 +228,40 @@ describe('createShellModel', () => {
     const snapshot = model.getSnapshot();
     expect(snapshot.bands.footer.playbackTime).toBe(1800);
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 5.8 g');
+  });
+
+  it('branches the active run from the selected recorded checkpoint through the authoritative host', async () => {
+    const run = createSampleRun();
+    run.history.checkpoints.push({
+      playbackTime: 1800,
+      individuals: [
+        {
+          ...structuredClone(run.individuals[0]),
+          state: {
+            ...structuredClone(run.individuals[0].state),
+            simulatedTime: 1800,
+            substances: {
+              glucose: {
+                gut: 3.4,
+                blood: 5.9,
+                cells: 8.8,
+              },
+            },
+          },
+        },
+      ],
+    });
+    const model = createShellModel({
+      engineHost: createStubSession(run),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    await model.branchActiveRunFromPlaybackTime(1800);
+
+    const snapshot = model.getSnapshot();
+    expect(snapshot.runName).toBe('Lunch Replay Branch');
+    expect(snapshot.bands.footer.playbackTime).toBe(1800);
+    expect(snapshot.bands.footer.checkpointTimes).toEqual([1800]);
+    expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 5.9 g');
   });
 });

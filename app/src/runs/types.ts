@@ -23,6 +23,12 @@ export interface RunHistory {
   checkpoints: RunHistoryCheckpoint[];
 }
 
+export interface RunLineage {
+  parentRunId: string;
+  parentCheckpointTime: number;
+  branchedAtPlaybackTime: number;
+}
+
 export interface Run {
   id: string;
   name: string;
@@ -30,6 +36,7 @@ export interface Run {
   scheduleLanes: ScheduleLane[];
   activePlaybackTime: number;
   history: RunHistory;
+  lineage?: RunLineage;
 }
 
 export interface CreateRunOptions {

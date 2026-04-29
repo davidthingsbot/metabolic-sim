@@ -1,4 +1,4 @@
-import type { Run } from './types';
+import type { IndividualRunState, Run } from './types';
 
 export interface BranchRunFromSnapshotOptions {
   sourceRun: Run;
@@ -6,16 +6,41 @@ export interface BranchRunFromSnapshotOptions {
   snapshotTime: number;
 }
 
-function cloneRun<T>(value: T): T {
-  return structuredClone(value);
+function createId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function branchRunFromSnapshot(
-  options: BranchRunFromSnapshotOptions,
-): Run {
-  const branched = cloneRun(options.sourceRun);
-  branched.id = `run-branch-${Math.random().toString(36).slice(2, 10)}`;
-  branched.name = options.branchedName;
-  branched.activePlaybackTime = options.snapshotTime;
-  return branched;
+function createCheckpointIndividuals(run: Run, snapshotTime: number): IndividualRunState[] {
+  const checkpoint = run.history.checkpoints.find((entry) => entry.playbackTime === snapshotTime);
+
+  if (!checkpoint) {
+    throw new Error(`Cannot branch run from missing checkpoint at playback time ${snapshotTime}`);
+  }
+
+  return structuredClone(checkpoint.individuals);
+}
+
+export function branchRunFromSnapshot(options: BranchRunFromSnapshotOptions): Run {
+  const individuals = createCheckpointIndividuals(options.sourceRun, options.snapshotTime);
+
+  return {
+    ...structuredClone(options.sourceRun),
+    id: createId('run'),
+    name: options.branchedName,
+    activePlaybackTime: options.snapshotTime,
+    individuals,
+    history: {
+      checkpoints: [
+        {
+          playbackTime: options.snapshotTime,
+          individuals: structuredClone(individuals),
+        },
+      ],
+    },
+    lineage: {
+      parentRunId: options.sourceRun.id,
+      parentCheckpointTime: options.snapshotTime,
+      branchedAtPlaybackTime: options.snapshotTime,
+    },
+  };
 }

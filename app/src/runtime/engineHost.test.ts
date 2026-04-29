@@ -165,4 +165,55 @@ describe('createEngineHost', () => {
 
     expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0]);
   });
+
+  it('branches the active run from a recorded checkpoint, persists the new run, and switches authority to it', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const sourceRun = createRun({ name: 'Source Run' });
+    sourceRun.history.checkpoints.push({
+      playbackTime: 300,
+      individuals: [
+        {
+          ...structuredClone(sourceRun.individuals[0]),
+          state: {
+            ...structuredClone(sourceRun.individuals[0].state),
+            simulatedTime: 300,
+            substances: {
+              glucose: {
+                gut: 2.5,
+                blood: 7.2,
+                cells: 9.4,
+              },
+            },
+          },
+        },
+      ],
+    });
+    await repository.saveRun(sourceRun);
+    await repository.setActiveRunId(sourceRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.branchActiveRunFromPlaybackTime(300, 'Source Run Branch');
+
+    const snapshot = host.getSnapshot();
+    const persistedRuns = await repository.listRuns();
+    const persistedSourceRun = await repository.loadRun(sourceRun.id);
+
+    expect(snapshot.activeRun.id).not.toBe(sourceRun.id);
+    expect(snapshot.activeRun.name).toBe('Source Run Branch');
+    expect(snapshot.activeRun.lineage).toEqual({
+      parentRunId: sourceRun.id,
+      parentCheckpointTime: 300,
+      branchedAtPlaybackTime: 300,
+    });
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.individuals[0].state.substances.glucose.blood).toBe(7.2);
+    expect(snapshot.activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([300]);
+    expect(persistedRuns).toHaveLength(2);
+    expect(await repository.getActiveRunId()).toBe(snapshot.activeRun.id);
+    expect(persistedSourceRun).toEqual(sourceRun);
+  });
 });
