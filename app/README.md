@@ -39,7 +39,7 @@ app/
 
 ## Tech baseline
 
-TypeScript. Static site (no backend). Deployed via GitHub Pages. SVG for diagrams; Canvas for high-density particle animations. Web Workers for the simulation engine. No heavy framework — a small reactive layer (Preact, lit, or hand-rolled) is sufficient. State persistence via IndexedDB; scenario sharing via URL fragments.
+TypeScript. Static site (no backend). Deployed via GitHub Pages. SVG for diagrams; Canvas for high-density particle animations. Web Workers for the simulation engine. **Preact** is the chosen reactive UI layer for the app shell and views. State persistence via IndexedDB; scenario sharing via URL fragments.
 
 See `../design/design.md` Section 15 for the detailed technology rationale.
 
