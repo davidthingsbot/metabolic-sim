@@ -676,11 +676,11 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
       },
       midsection: {
-        title: options.workspace === 'body-status' ? 'Body Status' : 'Planner shell',
+        title: options.workspace === 'body-status' ? 'Body Status' : '',
         copy:
           options.workspace === 'body-status'
             ? ''
-            : 'Static planner placeholders use the same active run and timeline model.',
+            : '',
         overviewMetrics: options.workspace === 'body-status' ? createOverviewMetrics(options.run, options.labelMode) : [],
         monitorCards: options.workspace === 'body-status'
           ? createMonitorCards(options.run, options.enabledSubsystemIds, options.labelMode)

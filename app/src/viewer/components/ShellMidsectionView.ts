@@ -17,13 +17,58 @@ export interface ShellMidsectionViewProps {
   onRemoveScheduledActivity: (activityId: string) => void;
 }
 
-function parseTimeOfDayHour(timeOfDay: string): number {
-  const [hoursText = '0'] = timeOfDay.split(':');
+function parseTimeOfDayMinutes(timeOfDay: string): number {
+  const [hoursText = '0', minutesText = '0'] = timeOfDay.split(':');
   const hours = Number.parseInt(hoursText, 10);
-  return Number.isFinite(hours) ? hours : 0;
+  const minutes = Number.parseInt(minutesText, 10);
+  const safeHours = Number.isFinite(hours) ? hours : 0;
+  const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
+  return safeHours * 60 + safeMinutes;
 }
 
-function getVisiblePlannerDays(selectedLane: ShellPlannerLaneOption | undefined, mealOptions: ShellPlannerMealOption[]): number[] {
+function roundPlannerPercent(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+export function formatPlannerHour(hour: number): string {
+  return `${hour.toString().padStart(2, '0')}:00`;
+}
+
+function formatPlannerMinuteOfDay(totalMinutes: number): string {
+  const clampedMinutes = Math.max(0, Math.min(1439, totalMinutes));
+  const hours = Math.floor(clampedMinutes / 60);
+  const minutes = clampedMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+export function createPlannerDraftFromTimelineSlot(day: number, hour: number): { day: number; timeOfDay: string } {
+  return {
+    day,
+    timeOfDay: formatPlannerHour(hour),
+  };
+}
+
+export function createPlannerDraftFromTimelinePosition(day: number, offsetY: number, height: number): { day: number; timeOfDay: string } {
+  if (height <= 0) {
+    return createPlannerDraftFromTimelineSlot(day, 0);
+  }
+
+  const progress = Math.max(0, Math.min(offsetY / height, 1));
+  const minuteOfDay = Math.min(1439, Math.round(progress * 1440));
+  return {
+    day,
+    timeOfDay: formatPlannerMinuteOfDay(minuteOfDay),
+  };
+}
+
+export function createPlannerEventPlacement(timeOfDay: string, durationMinutes: number): { topPercent: number; heightPercent: number } {
+  return {
+    topPercent: roundPlannerPercent((parseTimeOfDayMinutes(timeOfDay) / 1440) * 100),
+    heightPercent: roundPlannerPercent((Math.max(durationMinutes, 1) / 1440) * 100),
+  };
+}
+
+export function getVisiblePlannerDays(selectedLane: ShellPlannerLaneOption | undefined, mealOptions: ShellPlannerMealOption[]): number[] {
   if (!selectedLane) {
     return [0];
   }
@@ -37,13 +82,17 @@ function getVisiblePlannerDays(selectedLane: ShellPlannerLaneOption | undefined,
   return Array.from({ length: Math.max(1, maxDay + 1) }, (_, index) => index);
 }
 
-function createPlannerCellMeals(
+export function createPlannerCellMeals(
   laneId: string,
   mealOptions: ShellPlannerMealOption[],
   day: number,
   hour: number,
 ): ShellPlannerMealOption[] {
-  return mealOptions.filter((meal) => meal.laneId === laneId && meal.day === day && parseTimeOfDayHour(meal.timeOfDay) === hour);
+  return mealOptions.filter((meal) => meal.laneId === laneId && meal.day === day && Math.floor(parseTimeOfDayMinutes(meal.timeOfDay) / 60) === hour);
+}
+
+function createPlannerDayMeals(laneId: string, mealOptions: ShellPlannerMealOption[], day: number): ShellPlannerMealOption[] {
+  return mealOptions.filter((meal) => meal.laneId === laneId && meal.day === day);
 }
 
 export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> = ({
@@ -73,7 +122,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
 
   useEffect(() => {
     if (!snapshot.planner.mealOptions.some((meal) => meal.id === selectedMealId)) {
-      setSelectedMealId(snapshot.planner.mealOptions[0]?.id ?? '');
+      setSelectedMealId('');
     }
   }, [snapshot.planner.mealOptions, selectedMealId]);
 
@@ -125,6 +174,18 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
     onCreateScheduleLane({ durationMinutes: dayCount * 1440 });
     setCustomLaneDays('2');
     setIsAddingLane(false);
+  }
+
+  function selectPlannerLane(nextLaneId: string): void {
+    setLaneId(nextLaneId);
+    setSelectedMealId('');
+  }
+
+  function selectPlannerTimelinePosition(nextDay: number, event: JSX.TargetedMouseEvent<HTMLButtonElement>): void {
+    const draft = createPlannerDraftFromTimelinePosition(nextDay, event.offsetY, event.currentTarget.clientHeight);
+    setSelectedMealId('');
+    setDay(draft.day);
+    setTimeOfDay(draft.timeOfDay);
   }
 
   function clearSelection(): void {
@@ -204,7 +265,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
                   key: lane.id,
                   class: lane.id === laneId ? 'system-chip active' : 'system-chip',
                   type: 'button',
-                  onClick: () => setLaneId(lane.id),
+                  onClick: () => selectPlannerLane(lane.id),
                 },
                 [h('strong', null, lane.label), h('span', null, lane.placementLabel)],
               ),
@@ -233,11 +294,13 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
         : null,
     ]),
     end: h('section', { class: 'detail-field' }, [
-      h('div', { class: 'detail-heading' }, [
-        snapshot.workspace.value === 'body-status' ? null : h('p', { class: 'eyebrow' }, snapshot.workspace.label),
-        h('h2', null, snapshot.bands.midsection.title),
-        snapshot.bands.midsection.copy ? h('p', { class: 'detail-copy' }, snapshot.bands.midsection.copy) : null,
-      ]),
+      snapshot.bands.midsection.title || snapshot.bands.midsection.copy || snapshot.workspace.value !== 'event-planner'
+        ? h('div', { class: 'detail-heading' }, [
+            snapshot.workspace.value === 'body-status' ? null : h('p', { class: 'eyebrow' }, snapshot.workspace.label),
+            snapshot.bands.midsection.title ? h('h2', null, snapshot.bands.midsection.title) : null,
+            snapshot.bands.midsection.copy ? h('p', { class: 'detail-copy' }, snapshot.bands.midsection.copy) : null,
+          ])
+        : null,
       snapshot.workspace.value === 'body-status'
         ? h('section', { class: 'live-results-panel' }, [
             h('div', { class: 'overview-bar' },
@@ -262,35 +325,53 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
         : null,
       snapshot.workspace.value === 'event-planner'
         ? h('section', { class: 'planner-panel' }, [
-            h('div', { class: 'planner-timetable detail-card' }, [
-              h('div', { class: 'timeline-header' }, [
-                h('h3', null, selectedLane ? `${selectedLane.label} timetable` : 'Lane timetable'),
-                selectedLane
-                  ? h('span', { class: 'timeline-status' }, selectedLane.cycleDurationMinutes ? `${Math.ceil(selectedLane.cycleDurationMinutes / 1440)} day cycle` : 'One-off cycle')
-                  : null,
-              ]),
-              h('div', { class: 'planner-cycle-grid', style: `--planner-day-count: ${visiblePlannerDays.length};` }, [
-                h('div', { class: 'planner-cycle-corner' }, 'Hour'),
-                ...visiblePlannerDays.map((visibleDay) =>
-                  h('div', { key: `day-${visibleDay}`, class: 'planner-cycle-day-heading' }, `Day ${visibleDay}`),
-                ),
-                ...Array.from({ length: 24 }, (_, hour) =>
-                  [
-                    h('div', { key: `hour-${hour}`, class: 'planner-cycle-hour-heading' }, `${hour.toString().padStart(2, '0')}:00`),
-                    ...visiblePlannerDays.map((visibleDay) => {
-                      const cellMeals = selectedLane ? createPlannerCellMeals(selectedLane.id, snapshot.planner.mealOptions, visibleDay, hour) : [];
-                      return h('div', { key: `cell-${visibleDay}-${hour}`, class: 'planner-cycle-cell' },
-                        cellMeals.map((meal) =>
-                          h('div', { key: meal.id, class: 'planner-cycle-meal' }, `${meal.timeOfDay} · ${meal.durationMinutes}m · ${meal.carbsGrams}g`),
+            h('div', { class: 'planner-timeline detail-card' }, [
+              h('div', { class: 'planner-timeline-scroll' }, [
+                h('div', { class: 'planner-timeline-grid', style: `--planner-day-count: ${visiblePlannerDays.length};` }, [
+                  h('div', { class: 'planner-time-axis' }, [
+                    ...Array.from({ length: 24 }, (_, hour) =>
+                      h('div', { key: `tick-${hour}`, class: 'planner-time-tick' }, [
+                        h('span', { class: 'planner-time-label' }, formatPlannerHour(hour)),
+                        h('span', { class: 'planner-time-mark' }),
+                      ]),
+                    ),
+                  ]),
+                  ...visiblePlannerDays.map((visibleDay) =>
+                    h('div', { key: `day-${visibleDay}`, class: 'planner-day-column' }, [
+                      h('div', { class: 'planner-day-heading' }, `D${visibleDay}`),
+                      h('button', {
+                        class: 'planner-day-track',
+                        type: 'button',
+                        onClick: (event: JSX.TargetedMouseEvent<HTMLButtonElement>) => selectPlannerTimelinePosition(visibleDay, event),
+                      }, [
+                        ...Array.from({ length: 24 }, (_, hour) =>
+                          h('span', {
+                            key: `grid-${visibleDay}-${hour}`,
+                            class: hour === 0 ? 'planner-track-tick planner-track-tick-start' : 'planner-track-tick',
+                            style: `top: ${(hour / 24) * 100}%;`,
+                          }),
                         ),
-                      );
-                    }),
-                  ],
-                ).flat(),
+                        ...(selectedLane ? createPlannerDayMeals(selectedLane.id, snapshot.planner.mealOptions, visibleDay) : []).map((meal) => {
+                          const placement = createPlannerEventPlacement(meal.timeOfDay, meal.durationMinutes);
+                          return h('div', {
+                            key: meal.id,
+                            class: 'planner-track-event planner-track-event-meal' + (meal.id === selectedMealId ? ' planner-track-event-selected' : ''),
+                            title: meal.label,
+                            style: `top: ${placement.topPercent}%; height: max(${placement.heightPercent}%, 0.45rem);`,
+                            onClick: (clickEvent: MouseEvent) => {
+                              clickEvent.stopPropagation();
+                              setSelectedMealId(meal.id);
+                            },
+                          });
+                        }),
+                      ]),
+                    ]),
+                  ),
+                ]),
               ]),
             ]),
-            h('form', { class: 'planner-form detail-card', onSubmit: submitPlannerMeal }, [
-              h('h3', null, selectedMeal ? 'Edit meal' : 'Add meal'),
+            h('form', { class: 'planner-editor planner-form detail-card' + (selectedMeal ? ' planner-form-editing' : ''), onSubmit: submitPlannerMeal }, [
+              h('h3', null, selectedMeal ? 'Edit event' : 'Add event'),
               h('label', { class: 'planner-field' }, [
                 h('span', null, 'Existing meals'),
                 h('select', {
@@ -341,11 +422,6 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
                   }),
                 ]),
               ]),
-              h('p', { class: 'planner-note' },
-                selectedLane?.cycleDurationMinutes
-                  ? `Repeats inside a ${selectedLane.cycleDurationMinutes}-minute cycle from lane start.`
-                  : 'Places a one-off meal at an absolute playback time from run start.',
-              ),
               h('div', { class: 'planner-action-row' }, [
                 h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
                 selectedMeal

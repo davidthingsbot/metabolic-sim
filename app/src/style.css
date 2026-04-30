@@ -342,62 +342,127 @@ h3 {
 }
 
 .planner-form,
-.planner-grid {
+.planner-grid,
+.planner-panel,
+.planner-lane-form,
+.planner-lane-selector,
+.planner-day-column {
   display: grid;
   gap: 0.75rem;
 }
 
-.planner-panel,
-.planner-lane-form,
-.planner-lane-selector {
-  display: grid;
-  gap: 0.75rem;
+.planner-day-column {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.planner-panel {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.planner-timeline,
+.planner-editor {
+  min-height: 0;
 }
 
 .planner-add-lane-button {
   justify-items: center;
 }
 
-.planner-timetable {
-  overflow-x: auto;
+.planner-timeline-scroll {
+  overflow: auto;
+  min-height: 0;
 }
 
-.planner-cycle-grid {
+.planner-timeline-grid {
   display: grid;
-  grid-template-columns: 4.75rem repeat(var(--planner-day-count, 1), minmax(7rem, 1fr));
-  gap: 0.35rem;
-  align-items: stretch;
+  grid-template-columns: 4.5rem repeat(var(--planner-day-count, 1), minmax(3.75rem, 4.75rem));
+  gap: 0.85rem;
+  align-items: start;
+  min-width: max-content;
 }
 
-.planner-cycle-corner,
-.planner-cycle-day-heading,
-.planner-cycle-hour-heading,
-.planner-cycle-cell {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
-  padding: 0.45rem;
+.planner-time-axis {
+  position: relative;
+  height: 100%;
+  min-height: 20rem;
+  margin-top: 0;
+  display: grid;
+  grid-template-rows: repeat(24, minmax(0, 1fr));
 }
 
-.planner-cycle-corner,
-.planner-cycle-day-heading,
-.planner-cycle-hour-heading {
-  font-size: 0.78rem;
+.planner-time-tick {
+  position: relative;
+  min-height: 0.85rem;
+}
+
+.planner-time-label {
+  position: absolute;
+  top: -0.65rem;
+  left: 0;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
-.planner-cycle-cell {
-  min-height: 3rem;
-  display: grid;
-  gap: 0.3rem;
+.planner-time-mark,
+.planner-track-tick {
+  position: absolute;
+  left: calc(100% - 0.7rem);
+  width: 0.7rem;
+  height: 1px;
+  background: var(--border);
 }
 
-.planner-cycle-meal {
-  border-radius: 8px;
-  background: var(--accent-soft);
+.planner-time-mark {
+  top: 50%;
+}
+
+.planner-day-heading {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  min-height: 1.25rem;
+}
+
+.planner-day-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 20rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+
+.planner-track-tick {
+  left: 18%;
+  width: 64%;
+}
+
+.planner-track-tick-start {
+  top: 0.1%;
+}
+
+.planner-track-event {
+  position: absolute;
+  left: 30%;
+  width: 40%;
+  border-radius: 0.45rem;
   border: 1px solid var(--border);
-  padding: 0.3rem 0.4rem;
-  font-size: 0.78rem;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.planner-track-event-meal {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.planner-track-event-selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .planner-field {
