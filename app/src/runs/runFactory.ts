@@ -1,5 +1,6 @@
 import { createInitialState } from '../engine/state';
 import type {
+  CreateScheduleLaneInput,
   CreateRunOptions,
   IndividualRunState,
   LegacyScheduleLaneKind,
@@ -24,9 +25,33 @@ function createDefaultScheduleLanes(): ScheduleLane[] {
   return [
     { id: createId('lane'), kind: 'one-off', name: 'One-Off' },
     { id: createId('lane'), kind: 'repeating-cycle', name: 'Daily', cycleDurationMinutes: 1440 },
-    { id: createId('lane'), kind: 'repeating-cycle', name: 'Alternating Days', cycleDurationMinutes: 2880 },
-    { id: createId('lane'), kind: 'repeating-cycle', name: 'Weekly', cycleDurationMinutes: 10080 },
   ];
+}
+
+function formatCustomLaneName(durationMinutes: number): string {
+  const days = Math.floor(durationMinutes / 1440);
+  const hours = Math.floor((durationMinutes % 1440) / 60);
+
+  if (days > 0 && hours > 0) {
+    return `Custom · ${days} day${days === 1 ? '' : 's'} ${hours}h`;
+  }
+
+  if (days > 0) {
+    return `Custom · ${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  return `Custom · ${Math.max(durationMinutes, 1)} min`;
+}
+
+export function appendScheduleLane(run: Run, input: CreateScheduleLaneInput): ScheduleLane {
+  const lane: ScheduleLane = {
+    id: createId('lane'),
+    kind: 'repeating-cycle',
+    name: formatCustomLaneName(input.durationMinutes),
+    cycleDurationMinutes: input.durationMinutes,
+  };
+  run.scheduleLanes.push(lane);
+  return lane;
 }
 
 function normalizeCycleMinute(startPlaybackTime: number, cycleDurationMinutes: number): number {

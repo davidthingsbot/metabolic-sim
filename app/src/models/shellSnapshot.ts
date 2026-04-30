@@ -249,19 +249,6 @@ function formatTimeOfDayFromMinute(totalMinutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-function formatCycleDurationMinutes(cycleDurationMinutes: number): string {
-  const days = Math.floor(cycleDurationMinutes / 1440);
-  const remainingMinutes = cycleDurationMinutes % 1440;
-  const hours = Math.floor(remainingMinutes / 60);
-  const minutes = remainingMinutes % 60;
-
-  if (minutes === 0) {
-    return `${days}d ${hours}h`;
-  }
-
-  return `${days}d ${hours}h ${minutes}m`;
-}
-
 function formatMealSummary(activity: ScheduledMealActivity): string {
   return `${activity.carbsGrams.toFixed(1)} g carbs over ${activity.durationMinutes} min`;
 }
@@ -581,51 +568,6 @@ function createMonitorCards(
   });
 }
 
-function describeLaneSummary(lane: ScheduleLane, mealActivities: ScheduledMealActivity[]): string {
-  const mealCountLabel = `${mealActivities.length} scheduled meal${mealActivities.length === 1 ? '' : 's'}`;
-
-  if (lane.kind === 'repeating-cycle') {
-    return `Repeats every ${formatCycleDurationMinutes(lane.cycleDurationMinutes)} · ${mealCountLabel}.`;
-  }
-
-  return `One-off lane · ${mealCountLabel}.`;
-}
-
-function describeMealPlacement(activity: ScheduledMealActivity): string {
-  if ('startPlaybackTime' in activity) {
-    return `First meal starts at ${formatHours(activity.startPlaybackTime)}`;
-  }
-
-  return `First meal lands at cycle minute ${activity.startCycleMinute}`;
-}
-
-function createPlannerCards(run: Run): ShellDetailCard[] {
-  const mealActivities = run.scheduledActivities.filter((activity): activity is ScheduledMealActivity => activity.type === 'meal');
-  const laneCards = run.scheduleLanes.map((lane) => {
-    const laneMealActivities = mealActivities.filter((activity) => activity.laneId === lane.id);
-    const firstLaneMeal = laneMealActivities[0];
-
-    return {
-      title: `Lane summary · ${lane.name}`,
-      body: firstLaneMeal
-        ? `${describeLaneSummary(lane, laneMealActivities)} ${describeMealPlacement(firstLaneMeal)} and runs for ${firstLaneMeal.durationMinutes} min at ${firstLaneMeal.carbsGrams.toFixed(1)} g carbs.`
-        : `${describeLaneSummary(lane, laneMealActivities)} No meals scheduled yet.`,
-    };
-  });
-
-  return [
-    {
-      title: 'Planner timeline',
-      body: `Planner tracks ${mealActivities.length} scheduled meal${mealActivities.length === 1 ? '' : 's'} across ${run.scheduleLanes.length} lanes without expanding repeating cycles into concrete copies.`,
-    },
-    ...laneCards,
-    {
-      title: 'Next planner actions',
-      body: 'Add meals, movement, and sleep events here, then replay them through the same timeline scrubber in the footer.',
-    },
-  ];
-}
-
 function createPlannerLaneOptions(run: Run): ShellPlannerLaneOption[] {
   return run.scheduleLanes.map((lane) =>
     lane.kind === 'repeating-cycle'
@@ -744,10 +686,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
           ? createMonitorCards(options.run, options.enabledSubsystemIds, options.labelMode)
           : [],
         liveResults: bodyStatusLiveResults,
-        detailCards:
-          options.workspace === 'body-status'
-            ? []
-            : createPlannerCards(options.run),
+        detailCards: [],
       },
       footer: {
         scrubberStatus: createScrubberStatus(options.run),

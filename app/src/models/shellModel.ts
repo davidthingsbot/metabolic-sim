@@ -1,7 +1,7 @@
 import type { Theme } from '../theme';
 import type { EngineHost } from '../runtime/engineHost';
 import type { ShellStateHost } from '../runtime/shellStateHost';
-import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../runs/types';
+import type { CreateScheduleLaneInput, CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../runs/types';
 import { createShellSnapshot, type LabelMode, type ShellSnapshot, type SystemId, type Workspace } from './shellSnapshot';
 
 export interface ShellModel {
@@ -13,6 +13,7 @@ export interface ShellModel {
   setTheme(theme: Theme): void;
   setLabelMode(labelMode: LabelMode): void;
   setPlaying(isPlaying: boolean): void;
+  createScheduleLane(input: CreateScheduleLaneInput): Promise<void>;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
   removeScheduledActivity(activityId: string): Promise<void>;
@@ -79,6 +80,9 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     setPlaying(isPlaying) {
       options.shellStateHost.setPlaying(isPlaying);
+    },
+    async createScheduleLane(input) {
+      await options.engineHost.createScheduleLane(input);
     },
     async createMealActivity(input) {
       await options.engineHost.createMealActivity(input);

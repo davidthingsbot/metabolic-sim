@@ -124,8 +124,8 @@ button {
 }
 
 .header-brand-icon {
-  width: 3rem;
-  height: 3rem;
+  width: 4rem;
+  height: 4rem;
   border-radius: 12px;
   flex-shrink: 0;
 }
@@ -345,6 +345,59 @@ h3 {
 .planner-grid {
   display: grid;
   gap: 0.75rem;
+}
+
+.planner-panel,
+.planner-lane-form,
+.planner-lane-selector {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.planner-add-lane-button {
+  justify-items: center;
+}
+
+.planner-timetable {
+  overflow-x: auto;
+}
+
+.planner-cycle-grid {
+  display: grid;
+  grid-template-columns: 4.75rem repeat(var(--planner-day-count, 1), minmax(7rem, 1fr));
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+.planner-cycle-corner,
+.planner-cycle-day-heading,
+.planner-cycle-hour-heading,
+.planner-cycle-cell {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 0.45rem;
+}
+
+.planner-cycle-corner,
+.planner-cycle-day-heading,
+.planner-cycle-hour-heading {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.planner-cycle-cell {
+  min-height: 3rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.planner-cycle-meal {
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.78rem;
 }
 
 .planner-field {

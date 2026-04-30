@@ -263,6 +263,29 @@ describe('createEngineHost', () => {
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
   });
 
+  it('creates a custom planner lane through the authoritative host and persists it', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Planner Lane Run' });
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.createScheduleLane({ durationMinutes: 2880 });
+
+    const snapshot = host.getSnapshot();
+    const persistedRun = await repository.loadActiveRun();
+    expect(snapshot.activeRun.scheduleLanes).toEqual([
+      expect.objectContaining({ kind: 'one-off', name: 'One-Off' }),
+      expect.objectContaining({ kind: 'repeating-cycle', name: 'Daily', cycleDurationMinutes: 1440 }),
+      expect.objectContaining({ kind: 'repeating-cycle', name: 'Custom · 2 days', cycleDurationMinutes: 2880 }),
+    ]);
+    expect(persistedRun?.scheduleLanes).toEqual(snapshot.activeRun.scheduleLanes);
+  });
+
   it('creates a planned one-off meal through the authoritative host, rebuilds history, and persists the new schedule', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const seededRun = createRun({ name: 'Planner Edit Run' });
@@ -308,13 +331,19 @@ describe('createEngineHost', () => {
   it('edits a planned meal through the authoritative host, replays the active run, and persists the replacement', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const seededRun = createRun({ name: 'Planner Edit Run' });
+    seededRun.scheduleLanes.push({
+      id: 'lane-custom-2d',
+      kind: 'repeating-cycle',
+      name: 'Custom · 2 days',
+      cycleDurationMinutes: 2880,
+    });
     const oneOffLane = seededRun.scheduleLanes.find((lane) => lane.kind === 'one-off');
-    const weeklyLane = seededRun.scheduleLanes.find(
-      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    const customLane = seededRun.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 2880,
     );
 
-    if (!oneOffLane || !weeklyLane) {
-      throw new Error('Expected one-off and weekly lanes');
+    if (!oneOffLane || !customLane) {
+      throw new Error('Expected one-off and custom lanes');
     }
 
     seededRun.scheduledActivities = [{
@@ -335,7 +364,7 @@ describe('createEngineHost', () => {
 
     await host.stepPlayback(300);
     await host.updateMealActivity('editable-meal', {
-      laneId: weeklyLane.id,
+      laneId: customLane.id,
       startMinute: 1,
       durationMinutes: 2,
       carbsGrams: 20,
@@ -356,7 +385,7 @@ describe('createEngineHost', () => {
     expect(snapshot.activeRun.scheduledActivities).toEqual([
       {
         id: 'editable-meal',
-        laneId: weeklyLane.id,
+        laneId: customLane.id,
         type: 'meal',
         startCycleMinute: 1,
         durationMinutes: 2,

@@ -1,8 +1,8 @@
 import { h, type FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
-import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../../runs/types';
-import type { ShellSnapshot, SystemId, Workspace } from '../../models/shellSnapshot';
+import type { CreateScheduleLaneInput, CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../../runs/types';
+import type { ShellPlannerLaneOption, ShellPlannerMealOption, ShellSnapshot, SystemId, Workspace } from '../../models/shellSnapshot';
 import { createPlannerMealActivityInput } from './plannerMealForm';
 import { SplitView } from './SplitView';
 
@@ -11,9 +11,39 @@ export interface ShellMidsectionViewProps {
   onSelectWorkspace: (workspace: Workspace) => void;
   onSelectSystem: (systemId: SystemId) => void;
   onToggleSubsystem: (subsystemId: string) => void;
+  onCreateScheduleLane: (input: CreateScheduleLaneInput) => void;
   onCreateMealActivity: (input: CreateScheduledMealActivityInput) => void;
   onUpdateMealActivity: (activityId: string, input: UpdateScheduledMealActivityInput) => void;
   onRemoveScheduledActivity: (activityId: string) => void;
+}
+
+function parseTimeOfDayHour(timeOfDay: string): number {
+  const [hoursText = '0'] = timeOfDay.split(':');
+  const hours = Number.parseInt(hoursText, 10);
+  return Number.isFinite(hours) ? hours : 0;
+}
+
+function getVisiblePlannerDays(selectedLane: ShellPlannerLaneOption | undefined, mealOptions: ShellPlannerMealOption[]): number[] {
+  if (!selectedLane) {
+    return [0];
+  }
+
+  if (selectedLane.cycleDurationMinutes) {
+    return Array.from({ length: Math.max(1, Math.ceil(selectedLane.cycleDurationMinutes / 1440)) }, (_, index) => index);
+  }
+
+  const laneMeals = mealOptions.filter((meal) => meal.laneId === selectedLane.id);
+  const maxDay = laneMeals.reduce((currentMax, meal) => Math.max(currentMax, meal.day), 0);
+  return Array.from({ length: Math.max(1, maxDay + 1) }, (_, index) => index);
+}
+
+function createPlannerCellMeals(
+  laneId: string,
+  mealOptions: ShellPlannerMealOption[],
+  day: number,
+  hour: number,
+): ShellPlannerMealOption[] {
+  return mealOptions.filter((meal) => meal.laneId === laneId && meal.day === day && parseTimeOfDayHour(meal.timeOfDay) === hour);
 }
 
 export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> = ({
@@ -21,6 +51,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
   onSelectWorkspace,
   onSelectSystem,
   onToggleSubsystem,
+  onCreateScheduleLane,
   onCreateMealActivity,
   onUpdateMealActivity,
   onRemoveScheduledActivity,
@@ -31,6 +62,8 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
   const [timeOfDay, setTimeOfDay] = useState('08:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [carbsGrams, setCarbsGrams] = useState(45);
+  const [isAddingLane, setIsAddingLane] = useState(false);
+  const [customLaneDays, setCustomLaneDays] = useState('2');
 
   useEffect(() => {
     if (!snapshot.planner.laneOptions.some((lane) => lane.id === laneId)) {
@@ -46,6 +79,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
 
   const selectedLane = snapshot.planner.laneOptions.find((lane) => lane.id === laneId) ?? snapshot.planner.laneOptions[0];
   const selectedMeal = snapshot.planner.mealOptions.find((meal) => meal.id === selectedMealId);
+  const visiblePlannerDays = getVisiblePlannerDays(selectedLane, snapshot.planner.mealOptions);
 
   useEffect(() => {
     if (!selectedMeal) {
@@ -79,6 +113,18 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
     }
 
     onCreateMealActivity(input);
+  }
+
+  function submitCustomLane(event: Event): void {
+    event.preventDefault();
+    const dayCount = Number.parseInt(customLaneDays, 10);
+    if (!Number.isFinite(dayCount) || dayCount < 1) {
+      return;
+    }
+
+    onCreateScheduleLane({ durationMinutes: dayCount * 1440 });
+    setCustomLaneDays('2');
+    setIsAddingLane(false);
   }
 
   function clearSelection(): void {
@@ -148,6 +194,43 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
             ),
           ])
         : null,
+      snapshot.workspace.value === 'event-planner'
+        ? h('div', { class: 'systems-list planner-lane-selector' }, [
+            h('span', { class: 'control-label' }, 'Cycles'),
+            ...snapshot.planner.laneOptions.map((lane) =>
+              h(
+                'button',
+                {
+                  key: lane.id,
+                  class: lane.id === laneId ? 'system-chip active' : 'system-chip',
+                  type: 'button',
+                  onClick: () => setLaneId(lane.id),
+                },
+                [h('strong', null, lane.label), h('span', null, lane.placementLabel)],
+              ),
+            ),
+            h('button', {
+              class: isAddingLane ? 'system-chip active planner-add-lane-button' : 'system-chip planner-add-lane-button',
+              type: 'button',
+              onClick: () => setIsAddingLane((currentValue) => !currentValue),
+            }, [h('strong', null, '+'), h('span', null, 'Custom lane')]),
+            isAddingLane
+              ? h('form', { class: 'planner-lane-form', onSubmit: submitCustomLane }, [
+                  h('label', { class: 'planner-field' }, [
+                    h('span', null, 'Duration (days)'),
+                    h('input', {
+                      type: 'number',
+                      min: 1,
+                      step: 1,
+                      value: customLaneDays,
+                      onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setCustomLaneDays(event.currentTarget.value),
+                    }),
+                  ]),
+                  h('button', { class: 'control-chip', type: 'submit' }, 'Add lane'),
+                ])
+              : null,
+          ])
+        : null,
     ]),
     end: h('section', { class: 'detail-field' }, [
       h('div', { class: 'detail-heading' }, [
@@ -178,80 +261,100 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
           ])
         : null,
       snapshot.workspace.value === 'event-planner'
-        ? h('form', { class: 'planner-form detail-card', onSubmit: submitPlannerMeal }, [
-            h('h3', null, selectedMeal ? 'Edit meal' : 'Add meal'),
-            h('label', { class: 'planner-field' }, [
-              h('span', null, 'Existing meals'),
-              h('select', {
-                value: selectedMealId,
-                onInput: (event: JSX.TargetedEvent<HTMLSelectElement, Event>) => setSelectedMealId(event.currentTarget.value),
-              }, [
-                h('option', { value: '' }, 'Create new meal'),
-                ...snapshot.planner.mealOptions.map((meal) => h('option', { key: meal.id, value: meal.id }, meal.label)),
+        ? h('section', { class: 'planner-panel' }, [
+            h('div', { class: 'planner-timetable detail-card' }, [
+              h('div', { class: 'timeline-header' }, [
+                h('h3', null, selectedLane ? `${selectedLane.label} timetable` : 'Lane timetable'),
+                selectedLane
+                  ? h('span', { class: 'timeline-status' }, selectedLane.cycleDurationMinutes ? `${Math.ceil(selectedLane.cycleDurationMinutes / 1440)} day cycle` : 'One-off cycle')
+                  : null,
+              ]),
+              h('div', { class: 'planner-cycle-grid', style: `--planner-day-count: ${visiblePlannerDays.length};` }, [
+                h('div', { class: 'planner-cycle-corner' }, 'Hour'),
+                ...visiblePlannerDays.map((visibleDay) =>
+                  h('div', { key: `day-${visibleDay}`, class: 'planner-cycle-day-heading' }, `Day ${visibleDay}`),
+                ),
+                ...Array.from({ length: 24 }, (_, hour) =>
+                  [
+                    h('div', { key: `hour-${hour}`, class: 'planner-cycle-hour-heading' }, `${hour.toString().padStart(2, '0')}:00`),
+                    ...visiblePlannerDays.map((visibleDay) => {
+                      const cellMeals = selectedLane ? createPlannerCellMeals(selectedLane.id, snapshot.planner.mealOptions, visibleDay, hour) : [];
+                      return h('div', { key: `cell-${visibleDay}-${hour}`, class: 'planner-cycle-cell' },
+                        cellMeals.map((meal) =>
+                          h('div', { key: meal.id, class: 'planner-cycle-meal' }, `${meal.timeOfDay} · ${meal.durationMinutes}m · ${meal.carbsGrams}g`),
+                        ),
+                      );
+                    }),
+                  ],
+                ).flat(),
               ]),
             ]),
-            h('label', { class: 'planner-field' }, [
-              h('span', null, 'Lane'),
-              h('select', {
-                value: laneId,
-                onInput: (event: JSX.TargetedEvent<HTMLSelectElement, Event>) => setLaneId(event.currentTarget.value),
-              }, snapshot.planner.laneOptions.map((lane) =>
-                h('option', { key: lane.id, value: lane.id }, lane.label),
-              )),
-            ]),
-            h('div', { class: 'planner-grid' }, [
+            h('form', { class: 'planner-form detail-card', onSubmit: submitPlannerMeal }, [
+              h('h3', null, selectedMeal ? 'Edit meal' : 'Add meal'),
               h('label', { class: 'planner-field' }, [
-                h('span', null, 'Day offset'),
-                h('input', {
-                  type: 'number',
-                  min: 0,
-                  value: day,
-                  onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDay(Number(event.currentTarget.value)),
-                }),
+                h('span', null, 'Existing meals'),
+                h('select', {
+                  value: selectedMealId,
+                  onInput: (event: JSX.TargetedEvent<HTMLSelectElement, Event>) => setSelectedMealId(event.currentTarget.value),
+                }, [
+                  h('option', { value: '' }, 'Create new meal'),
+                  ...snapshot.planner.mealOptions.map((meal) => h('option', { key: meal.id, value: meal.id }, meal.label)),
+                ]),
               ]),
-              h('label', { class: 'planner-field' }, [
-                h('span', null, selectedLane?.placementLabel ?? 'Start time'),
-                h('input', {
-                  type: 'time',
-                  value: timeOfDay,
-                  onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setTimeOfDay(event.currentTarget.value),
-                }),
+              h('div', { class: 'planner-grid' }, [
+                h('label', { class: 'planner-field' }, [
+                  h('span', null, 'Day offset'),
+                  h('input', {
+                    type: 'number',
+                    min: 0,
+                    value: day,
+                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDay(Number(event.currentTarget.value)),
+                  }),
+                ]),
+                h('label', { class: 'planner-field' }, [
+                  h('span', null, selectedLane?.placementLabel ?? 'Start time'),
+                  h('input', {
+                    type: 'time',
+                    value: timeOfDay,
+                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setTimeOfDay(event.currentTarget.value),
+                  }),
+                ]),
               ]),
-            ]),
-            h('div', { class: 'planner-grid' }, [
-              h('label', { class: 'planner-field' }, [
-                h('span', null, 'Duration (min)'),
-                h('input', {
-                  type: 'number',
-                  min: 1,
-                  value: durationMinutes,
-                  onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDurationMinutes(Number(event.currentTarget.value)),
-                }),
+              h('div', { class: 'planner-grid' }, [
+                h('label', { class: 'planner-field' }, [
+                  h('span', null, 'Duration (min)'),
+                  h('input', {
+                    type: 'number',
+                    min: 1,
+                    value: durationMinutes,
+                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDurationMinutes(Number(event.currentTarget.value)),
+                  }),
+                ]),
+                h('label', { class: 'planner-field' }, [
+                  h('span', null, 'Carbs (g)'),
+                  h('input', {
+                    type: 'number',
+                    min: 1,
+                    step: 1,
+                    value: carbsGrams,
+                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setCarbsGrams(Number(event.currentTarget.value)),
+                  }),
+                ]),
               ]),
-              h('label', { class: 'planner-field' }, [
-                h('span', null, 'Carbs (g)'),
-                h('input', {
-                  type: 'number',
-                  min: 1,
-                  step: 1,
-                  value: carbsGrams,
-                  onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setCarbsGrams(Number(event.currentTarget.value)),
-                }),
+              h('p', { class: 'planner-note' },
+                selectedLane?.cycleDurationMinutes
+                  ? `Repeats inside a ${selectedLane.cycleDurationMinutes}-minute cycle from lane start.`
+                  : 'Places a one-off meal at an absolute playback time from run start.',
+              ),
+              h('div', { class: 'planner-action-row' }, [
+                h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
+                selectedMeal
+                  ? h('button', { class: 'control-chip', type: 'button', onClick: clearSelection }, 'Cancel edit')
+                  : null,
+                selectedMeal
+                  ? h('button', { class: 'control-chip', type: 'button', onClick: removeSelectedMeal }, 'Remove meal')
+                  : null,
               ]),
-            ]),
-            h('p', { class: 'planner-note' },
-              selectedLane?.cycleDurationMinutes
-                ? `Repeats inside a ${selectedLane.cycleDurationMinutes}-minute cycle from lane start.`
-                : 'Places a one-off meal at an absolute playback time from run start.',
-            ),
-            h('div', { class: 'planner-action-row' }, [
-              h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
-              selectedMeal
-                ? h('button', { class: 'control-chip', type: 'button', onClick: clearSelection }, 'Cancel edit')
-                : null,
-              selectedMeal
-                ? h('button', { class: 'control-chip', type: 'button', onClick: removeSelectedMeal }, 'Remove meal')
-                : null,
             ]),
           ])
         : null,

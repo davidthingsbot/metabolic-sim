@@ -55,13 +55,19 @@ describe('getMealCarbsForPlaybackWindow', () => {
 
   it('appends one-off and repeating planned meals in the authoritative lane format', () => {
     const run = createRun({ name: 'Append Test' });
+    run.scheduleLanes.push({
+      id: 'lane-custom-2d',
+      kind: 'repeating-cycle',
+      name: 'Custom · 2 days',
+      cycleDurationMinutes: 2880,
+    });
     const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
-    const weeklyLane = run.scheduleLanes.find(
-      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    const customLane = run.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 2880,
     );
 
-    if (!oneOffLane || !weeklyLane || weeklyLane.kind !== 'repeating-cycle') {
-      throw new Error('Expected one-off and weekly lanes');
+    if (!oneOffLane || !customLane || customLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and custom lanes');
     }
 
     const oneOffMeal = appendScheduledMealActivity(run, {
@@ -71,7 +77,7 @@ describe('getMealCarbsForPlaybackWindow', () => {
       carbsGrams: 60,
     });
     const repeatingMeal = appendScheduledMealActivity(run, {
-      laneId: weeklyLane.id,
+      laneId: customLane.id,
       startMinute: 1590,
       durationMinutes: 30,
       carbsGrams: 25,
@@ -84,13 +90,19 @@ describe('getMealCarbsForPlaybackWindow', () => {
 
   it('replaces an existing meal in-place while re-resolving its lane placement format', () => {
     const run = createRun({ name: 'Replace Test' });
+    run.scheduleLanes.push({
+      id: 'lane-custom-2d',
+      kind: 'repeating-cycle',
+      name: 'Custom · 2 days',
+      cycleDurationMinutes: 2880,
+    });
     const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
-    const weeklyLane = run.scheduleLanes.find(
-      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    const customLane = run.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 2880,
     );
 
-    if (!oneOffLane || !weeklyLane || weeklyLane.kind !== 'repeating-cycle') {
-      throw new Error('Expected one-off and weekly lanes');
+    if (!oneOffLane || !customLane || customLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and custom lanes');
     }
 
     const meal = appendScheduledMealActivity(run, {
@@ -101,7 +113,7 @@ describe('getMealCarbsForPlaybackWindow', () => {
     });
 
     const replacedMeal = replaceScheduledMealActivity(run, meal.id, {
-      laneId: weeklyLane.id,
+      laneId: customLane.id,
       startMinute: 1590,
       durationMinutes: 30,
       carbsGrams: 25,
@@ -109,7 +121,7 @@ describe('getMealCarbsForPlaybackWindow', () => {
 
     expect(replacedMeal).toEqual({
       id: meal.id,
-      laneId: weeklyLane.id,
+      laneId: customLane.id,
       type: 'meal',
       startCycleMinute: 1590,
       durationMinutes: 30,

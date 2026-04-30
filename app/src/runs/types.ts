@@ -74,6 +74,10 @@ export interface ScheduledMealActivityInput {
 export type CreateScheduledMealActivityInput = ScheduledMealActivityInput;
 export type UpdateScheduledMealActivityInput = ScheduledMealActivityInput;
 
+export interface CreateScheduleLaneInput {
+  durationMinutes: number;
+}
+
 export type ScheduledMealActivity =
   | (ScheduledMealActivityBase & OneOffScheduledActivityPlacement)
   | (ScheduledMealActivityBase & RepeatingScheduledActivityPlacement);

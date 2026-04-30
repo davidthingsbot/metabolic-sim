@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRun } from '../runs/runFactory';
+import { appendScheduleLane, createRun } from '../runs/runFactory';
 import { appendScheduledMealActivity, removeScheduledActivity, replaceScheduledMealActivity } from '../runs/scheduledActivities';
 import type { CreateScheduledMealActivityInput } from '../runs/types';
 import { createShellModel } from './shellModel';
@@ -36,6 +36,12 @@ function createStubSession(run = createSampleRun()) {
     async updateActiveRun(update: (draft: typeof activeRun) => void) {
       const draft = structuredClone(activeRun);
       update(draft);
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async createScheduleLane(input: { durationMinutes: number }) {
+      const draft = structuredClone(activeRun);
+      appendScheduleLane(draft, input);
       activeRun = draft;
       listeners.forEach((listener) => listener());
     },
@@ -383,17 +389,7 @@ describe('createShellModel', () => {
     const snapshot = model.getSnapshot();
     expect(snapshot.workspace.value).toBe('event-planner');
     expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(false);
-    expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Planner timeline',
-      'Lane summary · One-Off',
-      'Lane summary · Daily',
-      'Lane summary · Alternating Days',
-      'Lane summary · Weekly',
-      'Next planner actions',
-    ]);
-    expect(snapshot.bands.midsection.detailCards[0].body).toContain('1 scheduled meal');
-    expect(snapshot.bands.midsection.detailCards[2].body).toContain('Repeats every 1d 0h');
-    expect(snapshot.bands.midsection.detailCards[2].body).toContain('45.0 g carbs');
+    expect(snapshot.bands.midsection.detailCards).toEqual([]);
     expect(snapshot.bands.footer.playbackTime).toBe(5700);
     expect(snapshot.bands.footer.scrubberStatus).toContain('2 checkpoints');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 8.5 g');
@@ -449,19 +445,31 @@ describe('createShellModel', () => {
 
     const snapshot = model.getSnapshot();
     expect(snapshot.workspace.value).toBe('event-planner');
-    expect(snapshot.bands.midsection.detailCards[1].body).toContain('1 scheduled meal');
-    expect(snapshot.bands.midsection.detailCards[1].body).toContain('First meal starts at 2h 00m');
     expect(snapshot.planner.laneOptions.map((lane) => lane.label)).toEqual([
       'One-Off',
       'Daily',
-      'Alternating Days',
-      'Weekly',
     ]);
     expect(snapshot.planner.mealOptions).toEqual([
       expect.objectContaining({
         id: expect.any(String),
         label: 'One-Off · day 0 · 02:00 · 45 min · 60 g carbs',
       }),
+    ]);
+  });
+
+  it('creates a custom lane through the shell model and surfaces it in the planner snapshot', async () => {
+    const model = createShellModel({
+      engineHost: createStubSession(createRun({ name: 'Editable Run' })),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    model.setWorkspace('event-planner');
+    await model.createScheduleLane({ durationMinutes: 2880 });
+
+    expect(model.getSnapshot().planner.laneOptions.map((lane) => lane.label)).toEqual([
+      'One-Off',
+      'Daily',
+      'Custom · 2 days',
     ]);
   });
 
@@ -479,15 +487,16 @@ describe('createShellModel', () => {
       carbsGrams: 60,
     });
 
+    await model.createScheduleLane({ durationMinutes: 2880 });
     const createdMealId = model.getSnapshot().planner.mealOptions[0]?.id;
-    const weeklyLaneId = model.getSnapshot().planner.laneOptions.find((lane) => lane.label === 'Weekly')?.id ?? '';
+    const customLaneId = model.getSnapshot().planner.laneOptions.find((lane) => lane.label === 'Custom · 2 days')?.id ?? '';
 
     if (!createdMealId) {
       throw new Error('Expected created meal id');
     }
 
     await model.updateMealActivity(createdMealId, {
-      laneId: weeklyLaneId,
+      laneId: customLaneId,
       startMinute: 1590,
       durationMinutes: 30,
       carbsGrams: 25,
@@ -496,7 +505,7 @@ describe('createShellModel', () => {
     expect(model.getSnapshot().planner.mealOptions).toEqual([
       expect.objectContaining({
         id: createdMealId,
-        label: 'Weekly · day 1 · 02:30 · 30 min · 25 g carbs',
+        label: 'Custom · 2 days · day 1 · 02:30 · 30 min · 25 g carbs',
       }),
     ]);
   });

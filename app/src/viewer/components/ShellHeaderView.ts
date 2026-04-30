@@ -13,8 +13,8 @@ export const ShellHeaderView: FunctionalComponent<ShellHeaderViewProps> = ({ sna
       h('img', {
         class: 'header-brand-icon',
         src: '/metabolic-sim-icon.png',
-        width: 48,
-        height: 48,
+        width: 64,
+        height: 64,
         alt: 'Metabolic Simulator icon',
       }),
       h('h1', null, snapshot.bands.header.eyebrow),

@@ -107,9 +107,12 @@ describe('ShellHeaderView', () => {
 
     const titleRow = findByClassName(view, 'header-brand');
     const viewerControls = findByClassName(view, 'header-viewer-controls');
+    const icon = findByClassName(view, 'header-brand-icon');
     const headerText = flattenText(view);
 
     expect(titleRow?.props.children).toBeDefined();
+    expect((icon?.props as { width?: number }).width).toBe(64);
+    expect((icon?.props as { height?: number }).height).toBe(64);
     expect(flattenText(titleRow?.props.children)).toContain('Metabolic Simulator');
     expect(viewerControls?.props.children).toBeDefined();
     expect(flattenText(viewerControls?.props.children)).toContain('Plain labels');

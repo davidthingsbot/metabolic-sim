@@ -3,10 +3,10 @@ import { applyEvent } from '../engine/events';
 import { step } from '../engine/step';
 import type { RunRepository } from '../persistence/runRepository';
 import { branchRunFromSnapshot } from '../runs/branchRun';
-import { ensureRunHistory } from '../runs/runFactory';
+import { appendScheduleLane, ensureRunHistory } from '../runs/runFactory';
 import { replayRunToPlaybackTime } from '../runs/replayRun';
 import { appendScheduledMealActivity, getMealCarbsForPlaybackWindow, getScheduledMealActivities, removeScheduledActivity, replaceScheduledMealActivity } from '../runs/scheduledActivities';
-import type { CreateScheduledMealActivityInput, Run, RunHistoryCheckpoint, UpdateScheduledMealActivityInput } from '../runs/types';
+import type { CreateScheduleLaneInput, CreateScheduledMealActivityInput, Run, RunHistoryCheckpoint, UpdateScheduledMealActivityInput } from '../runs/types';
 
 export interface EngineHostSnapshot {
   activeRun: Run;
@@ -16,6 +16,7 @@ export interface EngineHost {
   getSnapshot(): EngineHostSnapshot;
   subscribe(listener: () => void): () => void;
   updateActiveRun(update: (draft: Run) => void): Promise<void>;
+  createScheduleLane(input: CreateScheduleLaneInput): Promise<void>;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
   removeScheduledActivity(activityId: string): Promise<void>;
@@ -138,6 +139,11 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
     },
     async updateActiveRun(update) {
       await commit(update);
+    },
+    async createScheduleLane(input) {
+      await commit((draft) => {
+        appendScheduleLane(draft, input);
+      });
     },
     async createMealActivity(input) {
       await commit((draft) => {

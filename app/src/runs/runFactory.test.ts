@@ -18,7 +18,7 @@ describe('createRun', () => {
     ]);
   });
 
-  it('starts with one one-off lane plus repeating daily, alternating-days, and weekly lanes', () => {
+  it('starts with one-off and daily schedule lanes only', () => {
     const run = createRun({ name: 'Schedule Test' });
 
     expect(run.scheduleLanes).toEqual([
@@ -30,16 +30,6 @@ describe('createRun', () => {
         kind: 'repeating-cycle',
         name: 'Daily',
         cycleDurationMinutes: 1440,
-      }),
-      expect.objectContaining({
-        kind: 'repeating-cycle',
-        name: 'Alternating Days',
-        cycleDurationMinutes: 2880,
-      }),
-      expect.objectContaining({
-        kind: 'repeating-cycle',
-        name: 'Weekly',
-        cycleDurationMinutes: 10080,
       }),
     ]);
   });

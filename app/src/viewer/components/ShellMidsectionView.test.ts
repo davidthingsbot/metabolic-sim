@@ -60,5 +60,7 @@ describe('ShellMidsection workspace visibility', () => {
       'Lymph System',
     ]);
     expect(eventPlannerSnapshot.subsystems).toEqual([]);
+    expect(eventPlannerSnapshot.planner.laneOptions.map((lane) => lane.label)).toEqual(['One-Off', 'Daily']);
+    expect(eventPlannerSnapshot.bands.midsection.detailCards).toEqual([]);
   });
 });

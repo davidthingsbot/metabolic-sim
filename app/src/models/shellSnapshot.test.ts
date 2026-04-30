@@ -150,18 +150,7 @@ describe('createShellSnapshot', () => {
     expect(snapshot.bands.footer.maxPlaybackTime).toBe(1);
     expect(snapshot.bands.footer.checkpointTimes).toEqual([0, 172800]);
     expect(snapshot.bands.footer.selectedCheckpointIndex).toBe(0);
-    expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Planner timeline',
-      'Lane summary · One-Off',
-      'Lane summary · Daily',
-      'Lane summary · Alternating Days',
-      'Lane summary · Weekly',
-      'Next planner actions',
-    ]);
-    expect(snapshot.bands.midsection.detailCards[1].body).toContain('One-off lane');
-    expect(snapshot.bands.midsection.detailCards[1].body).toContain('1 scheduled meal');
-    expect(snapshot.bands.midsection.detailCards[2].body).toContain('Repeats every 1d 0h');
-    expect(snapshot.bands.midsection.detailCards[2].body).toContain('1 scheduled meal');
+    expect(snapshot.bands.midsection.detailCards).toEqual([]);
     expect(snapshot.planner.laneOptions).toEqual([
       expect.objectContaining({
         label: 'One-Off',
@@ -171,16 +160,6 @@ describe('createShellSnapshot', () => {
         label: 'Daily',
         placementLabel: 'Cycle placement',
         cycleDurationMinutes: 1440,
-      }),
-      expect.objectContaining({
-        label: 'Alternating Days',
-        placementLabel: 'Cycle placement',
-        cycleDurationMinutes: 2880,
-      }),
-      expect.objectContaining({
-        label: 'Weekly',
-        placementLabel: 'Cycle placement',
-        cycleDurationMinutes: 10080,
       }),
     ]);
     expect(snapshot.planner.mealOptions).toEqual([
@@ -192,6 +171,32 @@ describe('createShellSnapshot', () => {
         id: 'one-off-meal',
         label: 'One-Off · day 0 · 06:00 · 45 min · 30 g carbs',
       }),
+    ]);
+  });
+
+  it('surfaces only one-off and daily planner lanes by default and supports custom repeating lanes', () => {
+    const run = createSampleRun();
+    run.scheduleLanes.push({
+      id: 'lane-custom-2d',
+      kind: 'repeating-cycle',
+      name: 'Custom · 2 days',
+      cycleDurationMinutes: 2880,
+    });
+
+    const snapshot = createShellSnapshot({
+      run,
+      workspace: 'event-planner',
+      selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system'],
+      labelMode: 'plain',
+      theme: 'light',
+      isPlaying: false,
+    });
+
+    expect(snapshot.planner.laneOptions.map((lane) => lane.label)).toEqual([
+      'One-Off',
+      'Daily',
+      'Custom · 2 days',
     ]);
   });
 

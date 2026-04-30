@@ -49,6 +49,7 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onSelectWorkspace: (workspace) => model.setWorkspace(workspace),
     onSelectSystem: (systemId) => model.selectSystem(systemId),
     onToggleSubsystem: (subsystemId) => model.toggleSubsystem(subsystemId),
+    onCreateScheduleLane: (input) => void model.createScheduleLane(input),
     onCreateMealActivity: (input) => void model.createMealActivity(input),
     onUpdateMealActivity: (activityId, input) => void model.updateMealActivity(activityId, input),
     onRemoveScheduledActivity: (activityId) => void model.removeScheduledActivity(activityId),

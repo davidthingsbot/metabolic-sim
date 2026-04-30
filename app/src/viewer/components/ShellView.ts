@@ -1,5 +1,5 @@
 import { h, type FunctionalComponent } from 'preact';
-import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../../runs/types';
+import type { CreateScheduleLaneInput, CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../../runs/types';
 import type { ShellSnapshot, SystemId, Workspace } from '../../models/shellSnapshot';
 import { BandView } from './BandView';
 import { ShellFooterView } from './ShellFooterView';
@@ -11,6 +11,7 @@ export interface ShellViewProps {
   onSelectWorkspace: (workspace: Workspace) => void;
   onSelectSystem: (systemId: SystemId) => void;
   onToggleSubsystem: (subsystemId: string) => void;
+  onCreateScheduleLane: (input: CreateScheduleLaneInput) => void;
   onCreateMealActivity: (input: CreateScheduledMealActivityInput) => void;
   onUpdateMealActivity: (activityId: string, input: UpdateScheduledMealActivityInput) => void;
   onRemoveScheduledActivity: (activityId: string) => void;
@@ -27,6 +28,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   onSelectWorkspace,
   onSelectSystem,
   onToggleSubsystem,
+  onCreateScheduleLane,
   onCreateMealActivity,
   onUpdateMealActivity,
   onRemoveScheduledActivity,
@@ -51,6 +53,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
         onSelectWorkspace,
         onSelectSystem,
         onToggleSubsystem,
+        onCreateScheduleLane,
         onCreateMealActivity,
         onUpdateMealActivity,
         onRemoveScheduledActivity,
