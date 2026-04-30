@@ -6,6 +6,7 @@ import type { ShellSnapshot } from '../../models/shellSnapshot';
 function createSnapshot(): ShellSnapshot {
   return {
     runName: 'Metabolic Run',
+    labelMode: 'plain',
     theme: 'light',
     workspace: {
       value: 'body-status',
@@ -24,11 +25,14 @@ function createSnapshot(): ShellSnapshot {
         highLevelStatus: 'Body steady, recent meal digesting.',
         viewerStatus: 'Viewing Whole Body',
         runChipLabel: 'Run: Metabolic Run',
+        labelModeToggleLabel: 'Plain labels',
         themeToggleLabel: 'Dark mode',
       },
       midsection: {
         title: 'Live results panel',
         copy: 'Copy',
+        overviewMetrics: [],
+        monitorCards: [],
         liveResults: {
           cards: [],
           sparkline: {
@@ -98,6 +102,7 @@ describe('ShellHeaderView', () => {
     const view = ShellHeaderView({
       snapshot: createSnapshot(),
       onToggleTheme: () => undefined,
+      onToggleLabelMode: () => undefined,
     });
 
     const titleRow = findByClassName(view, 'header-brand');

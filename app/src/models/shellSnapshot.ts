@@ -2,6 +2,7 @@ import type { Run, ScheduleLane, ScheduledMealActivity } from '../runs/types';
 
 export type Workspace = 'body-status' | 'event-planner';
 export type SystemId = 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
+export type LabelMode = 'plain' | 'scientific';
 
 export interface ShellSystemItem {
   id: SystemId;
@@ -20,6 +21,19 @@ export interface ShellSubsystemItem {
 export interface ShellDetailCard {
   title: string;
   body: string;
+}
+
+export interface ShellOverviewMetric {
+  label: string;
+  value: string;
+}
+
+export interface ShellMonitorCard {
+  id: string;
+  title: string;
+  value: string;
+  delta: string;
+  note: string;
 }
 
 export interface ShellLiveResultCard {
@@ -84,6 +98,7 @@ export interface ShellFooterEventReadout {
 
 export interface ShellSnapshot {
   runName: string;
+  labelMode: LabelMode;
   theme: 'light' | 'dark';
   workspace: {
     value: Workspace;
@@ -102,11 +117,14 @@ export interface ShellSnapshot {
       highLevelStatus: string;
       viewerStatus: string;
       runChipLabel: string;
+      labelModeToggleLabel: string;
       themeToggleLabel: string;
     };
     midsection: {
       title: string;
       copy: string;
+      overviewMetrics: ShellOverviewMetric[];
+      monitorCards: ShellMonitorCard[];
       liveResults: {
         cards: ShellLiveResultCard[];
         sparkline: ShellLiveResultSparkline;
@@ -134,37 +152,38 @@ export interface CreateShellSnapshotOptions {
   workspace: Workspace;
   selectedSystemId: SystemId;
   enabledSubsystemIds: string[];
+  labelMode: LabelMode;
   theme: 'light' | 'dark';
   isPlaying: boolean;
 }
 
-const SYSTEMS: Array<{ id: SystemId; label: string; caption: string }> = [
-  { id: 'whole-body', label: 'Whole Body', caption: 'Overview' },
-  { id: 'blood-system', label: 'Blood System', caption: 'Transport' },
-  { id: 'digestive-system', label: 'Digestive System', caption: 'Input' },
-  { id: 'lymph-system', label: 'Lymph System', caption: 'Return flow' },
+const SYSTEMS: Array<{ id: SystemId; plainLabel: string; scientificLabel: string; plainCaption: string; scientificCaption: string }> = [
+  { id: 'whole-body', plainLabel: 'Whole Body', scientificLabel: 'Whole Body', plainCaption: 'Overview', scientificCaption: 'System overview' },
+  { id: 'blood-system', plainLabel: 'Blood System', scientificLabel: 'Circulation', plainCaption: 'Transport', scientificCaption: 'Cardiovascular transport' },
+  { id: 'digestive-system', plainLabel: 'Digestive System', scientificLabel: 'Gastrointestinal Tract', plainCaption: 'Input', scientificCaption: 'Digestive processing' },
+  { id: 'lymph-system', plainLabel: 'Lymph System', scientificLabel: 'Lymphatic System', plainCaption: 'Return flow', scientificCaption: 'Interstitial return' },
 ];
 
-const SUBSYSTEMS_BY_SYSTEM: Record<SystemId, Array<{ id: string; label: string; caption: string }>> = {
+const SUBSYSTEMS_BY_SYSTEM: Record<SystemId, Array<{ id: string; plainLabel: string; scientificLabel: string; plainCaption: string; scientificCaption: string }>> = {
   'whole-body': [
-    { id: 'blood-system', label: 'Blood System', caption: 'Transport' },
-    { id: 'digestive-system', label: 'Digestive System', caption: 'Input' },
-    { id: 'lymph-system', label: 'Lymph System', caption: 'Return flow' },
+    { id: 'blood-system', plainLabel: 'Blood System', scientificLabel: 'Circulation', plainCaption: 'Transport', scientificCaption: 'Cardiovascular transport' },
+    { id: 'digestive-system', plainLabel: 'Digestive System', scientificLabel: 'Gastrointestinal Tract', plainCaption: 'Input', scientificCaption: 'Digestive processing' },
+    { id: 'lymph-system', plainLabel: 'Lymph System', scientificLabel: 'Lymphatic System', plainCaption: 'Return flow', scientificCaption: 'Interstitial return' },
   ],
   'blood-system': [
-    { id: 'arterial-flow', label: 'Arterial flow', caption: 'Outbound circulation' },
-    { id: 'venous-return', label: 'Venous return', caption: 'Inbound circulation' },
-    { id: 'storage-signal', label: 'Storage signal', caption: 'Hormone response' },
+    { id: 'arterial-flow', plainLabel: 'Arterial flow', scientificLabel: 'Arterial circulation', plainCaption: 'Outbound circulation', scientificCaption: 'Arterial distribution' },
+    { id: 'venous-return', plainLabel: 'Venous return', scientificLabel: 'Venous circulation', plainCaption: 'Inbound circulation', scientificCaption: 'Venous return' },
+    { id: 'storage-signal', plainLabel: 'Storage signal', scientificLabel: 'Insulin', plainCaption: 'Hormone response', scientificCaption: 'Anabolic hormone signal' },
   ],
   'digestive-system': [
-    { id: 'stomach-processing', label: 'Stomach processing', caption: 'Meal breakdown' },
-    { id: 'gut-absorption', label: 'Gut absorption', caption: 'Sugar uptake' },
-    { id: 'liver-hand-off', label: 'Liver hand-off', caption: 'First-pass handling' },
+    { id: 'stomach-processing', plainLabel: 'Stomach processing', scientificLabel: 'Gastric digestion', plainCaption: 'Meal breakdown', scientificCaption: 'Gastric processing' },
+    { id: 'gut-absorption', plainLabel: 'Gut absorption', scientificLabel: 'Intestinal absorption', plainCaption: 'Sugar uptake', scientificCaption: 'Enteric uptake' },
+    { id: 'liver-hand-off', plainLabel: 'Liver hand-off', scientificLabel: 'Hepatic first-pass', plainCaption: 'First-pass handling', scientificCaption: 'Hepatic first-pass handling' },
   ],
   'lymph-system': [
-    { id: 'lymph-return', label: 'Lymph return', caption: 'Fluid return' },
-    { id: 'tissue-drainage', label: 'Tissue drainage', caption: 'Interstitial pickup' },
-    { id: 'gut-lacteals', label: 'Gut lacteals', caption: 'Fat transport later' },
+    { id: 'lymph-return', plainLabel: 'Lymph return', scientificLabel: 'Lymphatic return', plainCaption: 'Fluid return', scientificCaption: 'Lymphatic return' },
+    { id: 'tissue-drainage', plainLabel: 'Tissue drainage', scientificLabel: 'Interstitial drainage', plainCaption: 'Interstitial pickup', scientificCaption: 'Interstitial drainage' },
+    { id: 'gut-lacteals', plainLabel: 'Gut lacteals', scientificLabel: 'Intestinal lacteals', plainCaption: 'Fat transport later', scientificCaption: 'Lacteal transport' },
   ],
 };
 
@@ -173,10 +192,54 @@ const WORKSPACE_OPTIONS: Array<{ value: Workspace; label: string }> = [
   { value: 'event-planner', label: 'Event Planner' },
 ];
 
+const TOP_LEVEL_SYSTEM_IDS: Array<Exclude<SystemId, 'whole-body'>> = ['blood-system', 'digestive-system', 'lymph-system'];
+
+function isTopLevelSystemId(id: string): id is Exclude<SystemId, 'whole-body'> {
+  return TOP_LEVEL_SYSTEM_IDS.includes(id as Exclude<SystemId, 'whole-body'>);
+}
+
+function isTopLevelSystemEnabled(systemId: Exclude<SystemId, 'whole-body'>, enabledSubsystemIds: string[]): boolean {
+  return enabledSubsystemIds.includes(systemId);
+}
+
+function getEnabledTopLevelSystemIds(enabledSubsystemIds: string[]): Array<Exclude<SystemId, 'whole-body'>> {
+  return TOP_LEVEL_SYSTEM_IDS.filter((systemId) => isTopLevelSystemEnabled(systemId, enabledSubsystemIds));
+}
+
 function formatHours(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+}
+
+function formatBodyAge(seconds: number): string {
+  const totalDays = Math.floor(seconds / 86400);
+  const years = Math.floor(totalDays / 365);
+  const remainingAfterYears = totalDays % 365;
+  const months = Math.floor(remainingAfterYears / 30);
+  const days = remainingAfterYears % 30;
+  return `${years}y ${months}m ${days}d`;
+}
+
+function getDisplayText(labelMode: LabelMode, plainLabel: string, scientificLabel: string): string {
+  return labelMode === 'scientific' ? scientificLabel : plainLabel;
+}
+
+function getSystemDisplay(system: (typeof SYSTEMS)[number], labelMode: LabelMode): Pick<ShellSystemItem, 'label' | 'caption'> {
+  return {
+    label: getDisplayText(labelMode, system.plainLabel, system.scientificLabel),
+    caption: getDisplayText(labelMode, system.plainCaption, system.scientificCaption),
+  };
+}
+
+function getSubsystemDisplay(
+  subsystem: (typeof SUBSYSTEMS_BY_SYSTEM)[SystemId][number],
+  labelMode: LabelMode,
+): Pick<ShellSubsystemItem, 'label' | 'caption'> {
+  return {
+    label: getDisplayText(labelMode, subsystem.plainLabel, subsystem.scientificLabel),
+    caption: getDisplayText(labelMode, subsystem.plainCaption, subsystem.scientificCaption),
+  };
 }
 
 function formatTimeOfDayFromMinute(totalMinutes: number): string {
@@ -480,26 +543,42 @@ function createRecentMoments(run: Run): ShellRecentMoment[] {
     }));
 }
 
-function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[] {
-  const recentMoments = createRecentMoments(run);
-  const sparkline = createLiveResultSparkline(run);
-
+function createOverviewMetrics(run: Run, labelMode: LabelMode): ShellOverviewMetric[] {
+  const currentState = run.individuals[0]?.state;
   return [
-    {
-      title: 'Current trajectory',
-      body: `${systemLabel} is streaming from recorded checkpoints for ${run.individuals[0]?.name ?? 'Body 1'}. Blood sugar ranges ${sparkline.minLabel}–${sparkline.maxLabel} across the visible trail.`,
-    },
-    {
-      title: 'Recent checkpoint trail',
-      body: recentMoments
-        .map((moment) => `${moment.label} ${moment.playbackLabel}: blood ${moment.bloodSugar}, gut ${moment.gutSugar}`)
-        .join(' · '),
-    },
-    {
-      title: 'How to read this',
-      body: 'Top cards show current compartment totals and their change since the last recorded checkpoint. The sparkline condenses recent blood-sugar history without introducing a heavy charting system.',
-    },
+    { label: labelMode === 'scientific' ? 'Chronological age' : 'Body age', value: formatBodyAge(run.activePlaybackTime) },
+    { label: labelMode === 'scientific' ? 'Plasma glucose' : 'Blood sugar', value: `${(currentState?.substances.glucose.blood ?? 0).toFixed(1)} g` },
+    { label: labelMode === 'scientific' ? 'Luminal glucose' : 'Gut sugar', value: `${(currentState?.substances.glucose.gut ?? 0).toFixed(1)} g` },
+    { label: labelMode === 'scientific' ? 'Intracellular glucose' : 'Cell sugar', value: `${(currentState?.substances.glucose.cells ?? 0).toFixed(1)} g` },
+    { label: labelMode === 'scientific' ? 'Insulin' : 'Storage signal', value: `${(currentState?.hormones.insulin ?? 0).toFixed(1)} µU/mL` },
   ];
+}
+
+function createMonitorCards(
+  run: Run,
+  enabledSubsystemIds: string[],
+  labelMode: LabelMode,
+): ShellMonitorCard[] {
+  const liveResultCards = createLiveResultCards(run);
+  const cardByMetric = new Map(liveResultCards.map((card) => [card.title, card]));
+  const metricForSystemId: Record<Exclude<SystemId, 'whole-body'>, { plain: string; scientific: string; notePlain: string; noteScientific: string }> = {
+    'blood-system': { plain: 'Blood sugar', scientific: 'Plasma glucose', notePlain: 'Whole-body transport monitor', noteScientific: 'Circulating glucose monitor' },
+    'digestive-system': { plain: 'Gut sugar', scientific: 'Luminal glucose', notePlain: 'Digestive intake monitor', noteScientific: 'Enteric nutrient monitor' },
+    'lymph-system': { plain: 'Cell sugar', scientific: 'Intracellular glucose', notePlain: 'Return-flow monitor', noteScientific: 'Interstitial return monitor' },
+  };
+
+  return getEnabledTopLevelSystemIds(enabledSubsystemIds).map((systemId) => {
+    const system = SYSTEMS.find((candidate) => candidate.id === systemId);
+    const metric = metricForSystemId[systemId];
+    const sourceCard = cardByMetric.get(metric.plain) ?? liveResultCards[0];
+    return {
+      id: systemId,
+      title: getDisplayText(labelMode, system?.plainLabel ?? systemId, system?.scientificLabel ?? systemId),
+      value: sourceCard?.value ?? '0.0 g',
+      delta: sourceCard?.delta ?? '±0.0 g vs baseline',
+      note: getDisplayText(labelMode, metric.notePlain, metric.noteScientific),
+    };
+  });
 }
 
 function describeLaneSummary(lane: ScheduleLane, mealActivities: ScheduledMealActivity[]): string {
@@ -588,12 +667,19 @@ function createPlannerMealOptions(run: Run): ShellPlannerMealOption[] {
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
-function createSubsystemItems(selectedSystemId: SystemId, enabledSubsystemIds: string[]): ShellSubsystemItem[] {
+function createSubsystemItems(selectedSystemId: SystemId, enabledSubsystemIds: string[], labelMode: LabelMode): ShellSubsystemItem[] {
   const enabledSubsystemIdSet = new Set(enabledSubsystemIds);
-  return (SUBSYSTEMS_BY_SYSTEM[selectedSystemId] ?? []).map((subsystem) => ({
-    ...subsystem,
-    isEnabled: enabledSubsystemIdSet.has(subsystem.id),
-  }));
+  const visibleSystems = selectedSystemId === 'whole-body'
+    ? getEnabledTopLevelSystemIds(enabledSubsystemIds)
+    : getEnabledTopLevelSystemIds(enabledSubsystemIds);
+
+  return visibleSystems.flatMap((systemId) =>
+    (SUBSYSTEMS_BY_SYSTEM[systemId] ?? []).map((subsystem) => ({
+      id: subsystem.id,
+      ...getSubsystemDisplay(subsystem, labelMode),
+      isEnabled: enabledSubsystemIdSet.has(subsystem.id),
+    })),
+  );
 }
 
 export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
@@ -601,6 +687,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
   const bloodSugar = state?.substances.glucose.blood ?? 0;
   const insulin = state?.hormones.insulin ?? 0;
   const selectedSystem = SYSTEMS.find((system) => system.id === options.selectedSystemId) ?? SYSTEMS[0];
+  const selectedSystemDisplay = getSystemDisplay(selectedSystem, options.labelMode);
   const workspaceLabel = options.workspace === 'body-status' ? 'Body Status' : 'Event Planner';
   const oneOffLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'one-off').length;
   const repeatingLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'repeating-cycle').length;
@@ -612,6 +699,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
 
   return {
     runName: options.run.name,
+    labelMode: options.labelMode,
     theme: options.theme,
     workspace: {
       value: options.workspace,
@@ -626,31 +714,39 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
       mealOptions: createPlannerMealOptions(options.run),
     },
     systems: SYSTEMS.map((system) => ({
-      ...system,
-      isSelected: system.id === selectedSystem.id,
+      id: system.id,
+      ...getSystemDisplay(system, options.labelMode),
+      isSelected: system.id === 'whole-body'
+        ? system.id === selectedSystem.id
+        : isTopLevelSystemId(system.id) && isTopLevelSystemEnabled(system.id, options.enabledSubsystemIds),
     })),
-    subsystems: options.workspace === 'body-status' ? createSubsystemItems(selectedSystem.id, options.enabledSubsystemIds) : [],
+    subsystems: options.workspace === 'body-status' ? createSubsystemItems(selectedSystem.id, options.enabledSubsystemIds, options.labelMode) : [],
     bands: {
       header: {
         eyebrow: 'Metabolic Simulator',
         highLevelStatus: `Whole body stable · Blood sugar ${bloodSugar.toFixed(1)} g · Storage signal ${insulin.toFixed(1)} µU/mL`,
         viewerStatus:
           options.workspace === 'body-status'
-            ? `Viewing ${selectedSystem.label}`
+            ? `Viewing ${selectedSystemDisplay.label}`
             : `Planning across ${oneOffLaneCount} one-off lane${oneOffLaneCount === 1 ? '' : 's'} and ${repeatingLaneCount} repeating lane${repeatingLaneCount === 1 ? '' : 's'}`,
         runChipLabel: `Run: ${options.run.name}`,
+        labelModeToggleLabel: options.labelMode === 'scientific' ? 'Scientific labels' : 'Plain labels',
         themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
       },
       midsection: {
-        title: options.workspace === 'body-status' ? 'Live results panel' : 'Planner shell',
+        title: options.workspace === 'body-status' ? 'Body Status' : 'Planner shell',
         copy:
           options.workspace === 'body-status'
-            ? 'Live simulation results stream from the authoritative run history while the shell stays mobile-first.'
+            ? ''
             : 'Static planner placeholders use the same active run and timeline model.',
+        overviewMetrics: options.workspace === 'body-status' ? createOverviewMetrics(options.run, options.labelMode) : [],
+        monitorCards: options.workspace === 'body-status'
+          ? createMonitorCards(options.run, options.enabledSubsystemIds, options.labelMode)
+          : [],
         liveResults: bodyStatusLiveResults,
         detailCards:
           options.workspace === 'body-status'
-            ? createBodyStatusCards(selectedSystem.label, options.run)
+            ? []
             : createPlannerCards(options.run),
       },
       footer: {

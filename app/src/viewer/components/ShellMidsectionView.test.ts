@@ -9,8 +9,9 @@ describe('ShellMidsection workspace visibility', () => {
     const bodyStatusSnapshot = createShellSnapshot({
       run,
       workspace: 'body-status',
-      selectedSystemId: 'blood-system',
-      enabledSubsystemIds: ['arterial-flow', 'storage-signal'],
+      selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'storage-signal', 'stomach-processing', 'gut-absorption', 'liver-hand-off', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
+      labelMode: 'plain',
       theme: 'light',
       isPlaying: false,
     });
@@ -20,6 +21,7 @@ describe('ShellMidsection workspace visibility', () => {
       workspace: 'event-planner',
       selectedSystemId: 'blood-system',
       enabledSubsystemIds: ['arterial-flow', 'storage-signal'],
+      labelMode: 'plain',
       theme: 'light',
       isPlaying: false,
     });
@@ -28,10 +30,34 @@ describe('ShellMidsection workspace visibility', () => {
       'Arterial flow',
       'Venous return',
       'Storage signal',
+      'Stomach processing',
+      'Gut absorption',
+      'Liver hand-off',
+      'Lymph return',
+      'Tissue drainage',
+      'Gut lacteals',
     ]);
     expect(bodyStatusSnapshot.subsystems.filter((subsystem) => subsystem.isEnabled).map((subsystem) => subsystem.label)).toEqual([
       'Arterial flow',
       'Storage signal',
+      'Stomach processing',
+      'Gut absorption',
+      'Liver hand-off',
+      'Lymph return',
+      'Tissue drainage',
+      'Gut lacteals',
+    ]);
+    expect(bodyStatusSnapshot.bands.midsection.overviewMetrics.map((metric) => metric.label)).toEqual([
+      'Body age',
+      'Blood sugar',
+      'Gut sugar',
+      'Cell sugar',
+      'Storage signal',
+    ]);
+    expect(bodyStatusSnapshot.bands.midsection.monitorCards.map((card) => card.title)).toEqual([
+      'Blood System',
+      'Digestive System',
+      'Lymph System',
     ]);
     expect(eventPlannerSnapshot.subsystems).toEqual([]);
   });

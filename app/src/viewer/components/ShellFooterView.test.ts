@@ -6,6 +6,7 @@ import type { ShellSnapshot } from '../../models/shellSnapshot';
 function createSnapshot(): ShellSnapshot {
   return {
     runName: 'Footer Test',
+    labelMode: 'plain',
     theme: 'light',
     workspace: {
       value: 'body-status',
@@ -24,11 +25,14 @@ function createSnapshot(): ShellSnapshot {
         highLevelStatus: 'Status',
         viewerStatus: 'Viewing Whole Body',
         runChipLabel: 'Run: Footer Test',
+        labelModeToggleLabel: 'Plain labels',
         themeToggleLabel: 'Dark mode',
       },
       midsection: {
         title: 'Live results panel',
         copy: 'Copy',
+        overviewMetrics: [],
+        monitorCards: [],
         liveResults: {
           cards: [],
           sparkline: {

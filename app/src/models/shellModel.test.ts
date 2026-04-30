@@ -134,23 +134,66 @@ function createStubSession(run = createSampleRun()) {
 }
 
 function createStubShellStateHost() {
+  const topLevelSystemIds = ['blood-system', 'digestive-system', 'lymph-system'] as const;
+  const systemSubtreeIds = {
+    'whole-body': [
+      'blood-system',
+      'digestive-system',
+      'lymph-system',
+      'arterial-flow',
+      'venous-return',
+      'storage-signal',
+      'stomach-processing',
+      'gut-absorption',
+      'liver-hand-off',
+      'lymph-return',
+      'tissue-drainage',
+      'gut-lacteals',
+    ],
+    'blood-system': ['blood-system', 'arterial-flow', 'venous-return', 'storage-signal'],
+    'digestive-system': ['digestive-system', 'stomach-processing', 'gut-absorption', 'liver-hand-off'],
+    'lymph-system': ['lymph-system', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
+  } as const;
+
   let snapshot: {
     workspace: 'body-status' | 'event-planner';
     selectedSystemId: 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
     enabledSubsystemIds: string[];
     theme: 'light' | 'dark';
+    labelMode: 'plain' | 'scientific';
     isPlaying: boolean;
   } = {
     workspace: 'body-status',
     selectedSystemId: 'whole-body',
-    enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'venous-return', 'storage-signal'],
+    enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'venous-return', 'storage-signal', 'stomach-processing', 'gut-absorption', 'liver-hand-off', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
     theme: 'light',
+    labelMode: 'plain',
     isPlaying: false,
   };
   const listeners = new Set<() => void>();
 
   function emit(): void {
     listeners.forEach((listener) => listener());
+  }
+
+  function isSystemEnabled(systemId: 'blood-system' | 'digestive-system' | 'lymph-system'): boolean {
+    return snapshot.enabledSubsystemIds.includes(systemId);
+  }
+
+  function setSystemEnabled(systemId: 'blood-system' | 'digestive-system' | 'lymph-system', isEnabled: boolean): void {
+    const nextEnabledIds = new Set(snapshot.enabledSubsystemIds);
+    for (const id of systemSubtreeIds[systemId]) {
+      if (isEnabled) {
+        nextEnabledIds.add(id);
+      } else {
+        nextEnabledIds.delete(id);
+      }
+    }
+    snapshot = { ...snapshot, enabledSubsystemIds: Array.from(nextEnabledIds) };
+  }
+
+  function firstEnabledSystemId(): 'blood-system' | 'digestive-system' | 'lymph-system' {
+    return topLevelSystemIds.find((systemId) => isSystemEnabled(systemId)) ?? 'blood-system';
   }
 
   return {
@@ -166,7 +209,27 @@ function createStubShellStateHost() {
       emit();
     },
     selectSystem(selectedSystemId: 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system') {
-      snapshot = { ...snapshot, selectedSystemId };
+      if (selectedSystemId === 'whole-body') {
+        snapshot = {
+          ...snapshot,
+          selectedSystemId: snapshot.selectedSystemId === 'whole-body' ? firstEnabledSystemId() : 'whole-body',
+        };
+        emit();
+        return;
+      }
+
+      if (snapshot.selectedSystemId === 'whole-body') {
+        setSystemEnabled(selectedSystemId, !isSystemEnabled(selectedSystemId));
+        emit();
+        return;
+      }
+
+      const nextEnabledState = !isSystemEnabled(selectedSystemId);
+      setSystemEnabled(selectedSystemId, nextEnabledState);
+      snapshot = {
+        ...snapshot,
+        selectedSystemId: nextEnabledState ? snapshot.selectedSystemId : firstEnabledSystemId(),
+      };
       emit();
     },
     toggleSubsystem(subsystemId: string) {
@@ -180,6 +243,10 @@ function createStubShellStateHost() {
     },
     setTheme(theme: 'light' | 'dark') {
       snapshot = { ...snapshot, theme };
+      emit();
+    },
+    setLabelMode(labelMode: 'plain' | 'scientific') {
+      snapshot = { ...snapshot, labelMode };
       emit();
     },
     setPlaying(isPlaying: boolean) {
@@ -200,18 +267,84 @@ describe('createShellModel', () => {
     expect(snapshot.runName).toBe('Lunch Replay');
     expect(snapshot.workspace.value).toBe('body-status');
     expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(true);
-    expect(snapshot.subsystems).toEqual([
-      expect.objectContaining({ label: 'Blood System', isEnabled: true }),
-      expect.objectContaining({ label: 'Digestive System', isEnabled: true }),
-      expect.objectContaining({ label: 'Lymph System', isEnabled: true }),
+    expect(snapshot.systems.filter((system) => system.id !== 'whole-body' && system.isSelected).map((system) => system.label)).toEqual([
+      'Blood System',
+      'Digestive System',
+      'Lymph System',
     ]);
+    expect(snapshot.subsystems).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Arterial flow', isEnabled: true }),
+      expect.objectContaining({ label: 'Stomach processing', isEnabled: true }),
+      expect.objectContaining({ label: 'Lymph return', isEnabled: true }),
+    ]));
     expect(snapshot.bands.header.viewerStatus).toBe('Viewing Whole Body');
+    expect(snapshot.bands.header.labelModeToggleLabel).toBe('Plain labels');
     expect(snapshot.bands.footer.isPlaying).toBe(false);
-    expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Current trajectory',
-      'Recent checkpoint trail',
-      'How to read this',
+    expect(snapshot.bands.midsection.overviewMetrics.map((metric) => metric.label)).toEqual([
+      'Body age',
+      'Blood sugar',
+      'Gut sugar',
+      'Cell sugar',
+      'Storage signal',
     ]);
+    expect(snapshot.bands.midsection.monitorCards.map((card) => card.title)).toEqual([
+      'Blood System',
+      'Digestive System',
+      'Lymph System',
+    ]);
+  });
+
+  it('keeps whole-body active while letting child systems toggle their outputs', () => {
+    const shellStateHost = createStubShellStateHost();
+    const model = createShellModel({
+      engineHost: createStubSession(),
+      shellStateHost,
+    });
+
+    model.selectSystem('lymph-system');
+
+    const snapshot = model.getSnapshot();
+    expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(true);
+    expect(snapshot.systems.find((system) => system.id === 'lymph-system')?.isSelected).toBe(false);
+    expect(snapshot.subsystems.map((subsystem) => subsystem.label)).not.toContain('Lymph return');
+    expect(snapshot.bands.midsection.monitorCards.map((card) => card.title)).not.toContain('Lymph System');
+  });
+
+  it('lets individual systems toggle when whole-body mode is off', () => {
+    const shellStateHost = createStubShellStateHost();
+    const model = createShellModel({
+      engineHost: createStubSession(),
+      shellStateHost,
+    });
+
+    model.selectSystem('whole-body');
+    model.selectSystem('digestive-system');
+
+    const snapshot = model.getSnapshot();
+    expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(false);
+    expect(snapshot.systems.find((system) => system.id === 'digestive-system')?.isSelected).toBe(false);
+    expect(snapshot.subsystems.map((subsystem) => subsystem.label)).toEqual([
+      'Arterial flow',
+      'Venous return',
+      'Storage signal',
+      'Lymph return',
+      'Tissue drainage',
+      'Gut lacteals',
+    ]);
+  });
+
+  it('switches label mode through the authoritative shell host', () => {
+    const shellStateHost = createStubShellStateHost();
+    const model = createShellModel({
+      engineHost: createStubSession(),
+      shellStateHost,
+    });
+
+    model.setLabelMode('scientific');
+
+    expect(shellStateHost.getSnapshot().labelMode).toBe('scientific');
+    expect(model.getSnapshot().bands.header.labelModeToggleLabel).toBe('Scientific labels');
+    expect(model.getSnapshot().systems.map((system) => system.label)).toContain('Circulation');
   });
 
   it('lets the controller toggle live playback state through the authoritative shell host', () => {
@@ -249,7 +382,7 @@ describe('createShellModel', () => {
 
     const snapshot = model.getSnapshot();
     expect(snapshot.workspace.value).toBe('event-planner');
-    expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(true);
+    expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(false);
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
       'Planner timeline',
       'Lane summary · One-Off',

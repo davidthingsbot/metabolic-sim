@@ -39,6 +39,11 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     model.setTheme(nextTheme);
   }
 
+  function toggleLabelMode(): void {
+    const nextLabelMode = snapshot.labelMode === 'plain' ? 'scientific' : 'plain';
+    model.setLabelMode(nextLabelMode);
+  }
+
   return h(ShellView, {
     snapshot,
     onSelectWorkspace: (workspace) => model.setWorkspace(workspace),
@@ -52,5 +57,6 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onTogglePlaying: () => model.setPlaying(!snapshot.bands.footer.isPlaying),
     onBranchPlaybackTime: (playbackTime) => void model.branchActiveRunFromPlaybackTime(playbackTime),
     onToggleTheme: toggleTheme,
+    onToggleLabelMode: toggleLabelMode,
   });
 };

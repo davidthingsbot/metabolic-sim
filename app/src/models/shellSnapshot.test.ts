@@ -39,8 +39,9 @@ describe('createShellSnapshot', () => {
     const snapshot = createShellSnapshot({
       run,
       workspace: 'body-status',
-      selectedSystemId: 'blood-system',
-      enabledSubsystemIds: ['arterial-flow', 'storage-signal'],
+      selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'venous-return', 'storage-signal', 'stomach-processing', 'gut-absorption', 'liver-hand-off', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
+      labelMode: 'plain',
       theme: 'light',
       isPlaying: false,
     });
@@ -48,18 +49,41 @@ describe('createShellSnapshot', () => {
     expect(snapshot.runName).toBe('Lunch Replay');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 6.2 g');
     expect(snapshot.bands.header.highLevelStatus).toContain('signal 18.0 µU/mL');
+    expect(snapshot.bands.header.labelModeToggleLabel).toBe('Plain labels');
     expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(true);
+    expect(snapshot.systems.find((system) => system.id === 'digestive-system')?.isSelected).toBe(true);
+    expect(snapshot.systems.find((system) => system.id === 'lymph-system')?.isSelected).toBe(true);
     expect(snapshot.subsystems).toEqual([
       expect.objectContaining({ label: 'Arterial flow', isEnabled: true }),
-      expect.objectContaining({ label: 'Venous return', isEnabled: false }),
+      expect.objectContaining({ label: 'Venous return', isEnabled: true }),
       expect.objectContaining({ label: 'Storage signal', isEnabled: true }),
+      expect.objectContaining({ label: 'Stomach processing', isEnabled: true }),
+      expect.objectContaining({ label: 'Gut absorption', isEnabled: true }),
+      expect.objectContaining({ label: 'Liver hand-off', isEnabled: true }),
+      expect.objectContaining({ label: 'Lymph return', isEnabled: true }),
+      expect.objectContaining({ label: 'Tissue drainage', isEnabled: true }),
+      expect.objectContaining({ label: 'Gut lacteals', isEnabled: true }),
     ]);
-    expect(snapshot.bands.midsection.copy).toContain('Live simulation results');
-    expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Current trajectory',
-      'Recent checkpoint trail',
-      'How to read this',
+    expect(snapshot.bands.midsection.copy).toBe('');
+    expect(snapshot.bands.midsection.overviewMetrics.map((metric) => metric.label)).toEqual([
+      'Body age',
+      'Blood sugar',
+      'Gut sugar',
+      'Cell sugar',
+      'Storage signal',
     ]);
+    expect(snapshot.bands.midsection.overviewMetrics[0]?.value).toBe('0y 0m 0d');
+    expect(snapshot.bands.midsection.monitorCards.map((card) => card.title)).toEqual([
+      'Blood System',
+      'Digestive System',
+      'Lymph System',
+    ]);
+    expect(snapshot.bands.midsection.monitorCards[0]).toEqual(
+      expect.objectContaining({
+        title: 'Blood System',
+      }),
+    );
+    expect(snapshot.bands.midsection.detailCards).toEqual([]);
     expect(snapshot.bands.midsection.liveResults.cards).toEqual([
       expect.objectContaining({ title: 'Blood sugar', value: '6.2 g', delta: '+0.5 g vs 5 min ago' }),
       expect.objectContaining({ title: 'Gut sugar', value: '12.4 g', delta: '-2.4 g vs 5 min ago' }),
@@ -112,12 +136,15 @@ describe('createShellSnapshot', () => {
       workspace: 'event-planner',
       selectedSystemId: 'whole-body',
       enabledSubsystemIds: ['blood-system', 'digestive-system'],
+      labelMode: 'scientific',
       theme: 'dark',
       isPlaying: false,
     });
 
     expect(snapshot.workspace.label).toBe('Event Planner');
     expect(snapshot.subsystems).toEqual([]);
+    expect(snapshot.systems.map((system) => system.label)).toContain('Circulation');
+    expect(snapshot.bands.header.labelModeToggleLabel).toBe('Scientific labels');
     expect(snapshot.bands.header.themeToggleLabel).toBe('Light mode');
     expect(snapshot.theme).toBe('dark');
     expect(snapshot.bands.footer.maxPlaybackTime).toBe(1);
@@ -184,6 +211,7 @@ describe('createShellSnapshot', () => {
       workspace: 'body-status',
       selectedSystemId: 'whole-body',
       enabledSubsystemIds: ['blood-system', 'digestive-system'],
+      labelMode: 'plain',
       theme: 'light',
       isPlaying: false,
     });
@@ -245,6 +273,7 @@ describe('createShellSnapshot', () => {
       workspace: 'body-status',
       selectedSystemId: 'whole-body',
       enabledSubsystemIds: ['blood-system', 'digestive-system'],
+      labelMode: 'plain',
       theme: 'light',
       isPlaying: true,
     });

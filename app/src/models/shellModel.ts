@@ -2,7 +2,7 @@ import type { Theme } from '../theme';
 import type { EngineHost } from '../runtime/engineHost';
 import type { ShellStateHost } from '../runtime/shellStateHost';
 import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../runs/types';
-import { createShellSnapshot, type ShellSnapshot, type SystemId, type Workspace } from './shellSnapshot';
+import { createShellSnapshot, type LabelMode, type ShellSnapshot, type SystemId, type Workspace } from './shellSnapshot';
 
 export interface ShellModel {
   getSnapshot(): ShellSnapshot;
@@ -11,6 +11,7 @@ export interface ShellModel {
   selectSystem(systemId: SystemId): void;
   toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
+  setLabelMode(labelMode: LabelMode): void;
   setPlaying(isPlaying: boolean): void;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
@@ -52,6 +53,7 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
         workspace: shellStateSnapshot.workspace,
         selectedSystemId: shellStateSnapshot.selectedSystemId,
         enabledSubsystemIds: shellStateSnapshot.enabledSubsystemIds,
+        labelMode: shellStateSnapshot.labelMode,
         theme: shellStateSnapshot.theme,
         isPlaying: shellStateSnapshot.isPlaying,
       });
@@ -71,6 +73,9 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     setTheme(nextTheme) {
       options.shellStateHost.setTheme(nextTheme);
+    },
+    setLabelMode(labelMode) {
+      options.shellStateHost.setLabelMode(labelMode);
     },
     setPlaying(isPlaying) {
       options.shellStateHost.setPlaying(isPlaying);

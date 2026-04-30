@@ -8,31 +8,28 @@ describe('createShellStateHost', () => {
 
     const unsubscribe = host.subscribe(() => {
       const snapshot = host.getSnapshot();
-      events.push(`${snapshot.workspace}:${snapshot.selectedSystemId}:${snapshot.enabledSubsystemIds.length}:${snapshot.theme}`);
+      events.push(`${snapshot.workspace}:${snapshot.selectedSystemId}:${snapshot.enabledSubsystemIds.length}:${snapshot.theme}:${snapshot.labelMode}`);
     });
 
     host.setWorkspace('event-planner');
-    host.selectSystem('blood-system');
-    host.toggleSubsystem('arterial-flow');
+    host.selectSystem('lymph-system');
     host.setTheme('light');
+    host.setLabelMode('scientific');
     host.setPlaying(true);
     unsubscribe();
 
-    expect(host.getSnapshot()).toMatchObject({
-      workspace: 'event-planner',
-      selectedSystemId: 'blood-system',
-      theme: 'light',
-      isPlaying: true,
-    });
-    expect(host.getSnapshot().enabledSubsystemIds).not.toContain('arterial-flow');
-    expect(host.getSnapshot().enabledSubsystemIds).toContain('venous-return');
-    expect(host.getSnapshot().enabledSubsystemIds).toHaveLength(11);
+    const snapshot = host.getSnapshot();
+    expect(snapshot.selectedSystemId).toBe('whole-body');
+    expect(snapshot.enabledSubsystemIds).not.toContain('lymph-system');
+    expect(snapshot.enabledSubsystemIds).not.toContain('lymph-return');
+    expect(snapshot.enabledSubsystemIds).toContain('venous-return');
+    expect(snapshot.enabledSubsystemIds).toHaveLength(8);
     expect(events).toEqual([
-      'event-planner:whole-body:12:dark',
-      'event-planner:blood-system:12:dark',
-      'event-planner:blood-system:11:dark',
-      'event-planner:blood-system:11:light',
-      'event-planner:blood-system:11:light',
+      'event-planner:whole-body:12:dark:plain',
+      'event-planner:whole-body:8:dark:plain',
+      'event-planner:whole-body:8:light:plain',
+      'event-planner:whole-body:8:light:scientific',
+      'event-planner:whole-body:8:light:scientific',
     ]);
   });
 });

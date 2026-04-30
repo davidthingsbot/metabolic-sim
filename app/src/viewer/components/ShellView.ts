@@ -19,6 +19,7 @@ export interface ShellViewProps {
   onTogglePlaying: () => void;
   onBranchPlaybackTime: (playbackTime: number) => void;
   onToggleTheme: () => void;
+  onToggleLabelMode: () => void;
 }
 
 export const ShellView: FunctionalComponent<ShellViewProps> = ({
@@ -34,12 +35,13 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   onTogglePlaying,
   onBranchPlaybackTime,
   onToggleTheme,
+  onToggleLabelMode,
 }) =>
   h('div', { class: 'shell-app' }, [
     h(BandView, {
       as: 'header',
       className: 'shell-header',
-      children: h(ShellHeaderView, { snapshot, onToggleTheme }),
+      children: h(ShellHeaderView, { snapshot, onToggleTheme, onToggleLabelMode }),
     }),
     h(BandView, {
       as: 'main',

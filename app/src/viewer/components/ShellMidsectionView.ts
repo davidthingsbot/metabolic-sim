@@ -6,26 +6,6 @@ import type { ShellSnapshot, SystemId, Workspace } from '../../models/shellSnaps
 import { createPlannerMealActivityInput } from './plannerMealForm';
 import { SplitView } from './SplitView';
 
-function createSparklinePath(points: number[]): string {
-  if (points.length === 0) {
-    return '';
-  }
-
-  const width = 160;
-  const height = 48;
-  const minPoint = Math.min(...points);
-  const maxPoint = Math.max(...points);
-  const pointRange = Math.max(maxPoint - minPoint, 1);
-
-  return points
-    .map((point, index) => {
-      const x = points.length === 1 ? 0 : (index / (points.length - 1)) * width;
-      const y = height - ((point - minPoint) / pointRange) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(' ');
-}
-
 export interface ShellMidsectionViewProps {
   snapshot: ShellSnapshot;
   onSelectWorkspace: (workspace: Workspace) => void;
@@ -171,38 +151,30 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
     ]),
     end: h('section', { class: 'detail-field' }, [
       h('div', { class: 'detail-heading' }, [
-        h('p', { class: 'eyebrow' }, snapshot.workspace.label),
+        snapshot.workspace.value === 'body-status' ? null : h('p', { class: 'eyebrow' }, snapshot.workspace.label),
         h('h2', null, snapshot.bands.midsection.title),
-        h('p', { class: 'detail-copy' }, snapshot.bands.midsection.copy),
+        snapshot.bands.midsection.copy ? h('p', { class: 'detail-copy' }, snapshot.bands.midsection.copy) : null,
       ]),
       snapshot.workspace.value === 'body-status'
         ? h('section', { class: 'live-results-panel' }, [
-            h('div', { class: 'live-results-grid' }, [
-              ...snapshot.bands.midsection.liveResults.cards.map((card) =>
-                h('article', { key: card.title, class: 'live-result-card' }, [
+            h('div', { class: 'overview-bar' },
+              snapshot.bands.midsection.overviewMetrics.map((metric) =>
+                h('article', { key: metric.label, class: 'overview-metric' }, [
+                  h('span', { class: 'live-result-title' }, metric.label),
+                  h('strong', { class: 'live-result-value' }, metric.value),
+                ]),
+              ),
+            ),
+            h('div', { class: 'live-results-grid' },
+              snapshot.bands.midsection.monitorCards.map((card) =>
+                h('article', { key: card.id, class: 'live-result-card' }, [
                   h('span', { class: 'live-result-title' }, card.title),
                   h('strong', { class: 'live-result-value' }, card.value),
                   h('span', { class: 'live-result-delta' }, card.delta),
+                  h('span', { class: 'monitor-card-note' }, card.note),
                 ]),
               ),
-              h('article', { class: 'live-result-card sparkline-card' }, [
-                h('div', { class: 'sparkline-heading' }, [
-                  h('span', { class: 'live-result-title' }, 'Blood sugar trend'),
-                  h('span', { class: 'sparkline-range' }, `${snapshot.bands.midsection.liveResults.sparkline.minLabel}–${snapshot.bands.midsection.liveResults.sparkline.maxLabel}`),
-                ]),
-                h('svg', { class: 'sparkline', viewBox: '0 0 160 48', 'aria-label': 'Recent blood sugar history' }, [
-                  h('path', {
-                    d: createSparklinePath(snapshot.bands.midsection.liveResults.sparkline.points),
-                    fill: 'none',
-                    stroke: 'currentColor',
-                    'stroke-width': '2',
-                    'stroke-linecap': 'round',
-                    'stroke-linejoin': 'round',
-                  }),
-                ]),
-                h('span', { class: 'live-result-delta' }, `${snapshot.bands.midsection.liveResults.recentMoments.length} recent checkpoints`),
-              ]),
-            ]),
+            ),
           ])
         : null,
       snapshot.workspace.value === 'event-planner'
@@ -283,14 +255,16 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
             ]),
           ])
         : null,
-      h('div', { class: 'detail-card-stack' },
-        snapshot.bands.midsection.detailCards.map((card) =>
-          h('article', { key: card.title, class: 'detail-card' }, [
-            h('h3', null, card.title),
-            h('p', null, card.body),
-          ]),
-        ),
-      ),
+      snapshot.bands.midsection.detailCards.length > 0
+        ? h('div', { class: 'detail-card-stack' },
+            snapshot.bands.midsection.detailCards.map((card) =>
+              h('article', { key: card.title, class: 'detail-card' }, [
+                h('h3', null, card.title),
+                h('p', null, card.body),
+              ]),
+            ),
+          )
+        : null,
     ]),
   });
 };

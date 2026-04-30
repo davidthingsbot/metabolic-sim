@@ -1,11 +1,12 @@
 import { applyTheme, type Theme } from '../theme';
-import type { SystemId, Workspace } from '../models/shellSnapshot';
+import type { LabelMode, SystemId, Workspace } from '../models/shellSnapshot';
 
 export interface ShellStateSnapshot {
   workspace: Workspace;
   selectedSystemId: SystemId;
   enabledSubsystemIds: string[];
   theme: Theme;
+  labelMode: LabelMode;
   isPlaying: boolean;
 }
 
@@ -16,6 +17,7 @@ export interface ShellStateHost {
   selectSystem(systemId: SystemId): void;
   toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
+  setLabelMode(labelMode: LabelMode): void;
   setPlaying(isPlaying: boolean): void;
 }
 
@@ -24,6 +26,27 @@ export interface CreateShellStateHostOptions {
   initialWorkspace?: Workspace;
   initialSelectedSystemId?: SystemId;
 }
+
+const TOP_LEVEL_SYSTEM_IDS: SystemId[] = ['blood-system', 'digestive-system', 'lymph-system'];
+const SYSTEM_SUBTREE_IDS: Record<SystemId, string[]> = {
+  'whole-body': [
+    'blood-system',
+    'digestive-system',
+    'lymph-system',
+    'arterial-flow',
+    'venous-return',
+    'storage-signal',
+    'stomach-processing',
+    'gut-absorption',
+    'liver-hand-off',
+    'lymph-return',
+    'tissue-drainage',
+    'gut-lacteals',
+  ],
+  'blood-system': ['blood-system', 'arterial-flow', 'venous-return', 'storage-signal'],
+  'digestive-system': ['digestive-system', 'stomach-processing', 'gut-absorption', 'liver-hand-off'],
+  'lymph-system': ['lymph-system', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
+};
 
 export function createShellStateHost(options: CreateShellStateHostOptions): ShellStateHost {
   let snapshot: ShellStateSnapshot = {
@@ -44,6 +67,7 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
       'gut-lacteals',
     ],
     theme: options.initialTheme,
+    labelMode: 'plain',
     isPlaying: false,
   };
   const listeners = new Set<() => void>();
@@ -52,6 +76,27 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
 
   function emit(): void {
     listeners.forEach((listener) => listener());
+  }
+
+  function isSystemEnabled(systemId: SystemId): boolean {
+    return SYSTEM_SUBTREE_IDS[systemId].every((id) => snapshot.enabledSubsystemIds.includes(id))
+      || snapshot.enabledSubsystemIds.includes(systemId);
+  }
+
+  function setSystemEnabled(systemId: Exclude<SystemId, 'whole-body'>, isEnabled: boolean): void {
+    const nextEnabledIds = new Set(snapshot.enabledSubsystemIds);
+    for (const id of SYSTEM_SUBTREE_IDS[systemId]) {
+      if (isEnabled) {
+        nextEnabledIds.add(id);
+      } else {
+        nextEnabledIds.delete(id);
+      }
+    }
+    snapshot = { ...snapshot, enabledSubsystemIds: Array.from(nextEnabledIds) };
+  }
+
+  function firstEnabledSystemId(): SystemId {
+    return TOP_LEVEL_SYSTEM_IDS.find((systemId) => isSystemEnabled(systemId)) ?? 'blood-system';
   }
 
   return {
@@ -67,7 +112,27 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
       emit();
     },
     selectSystem(selectedSystemId) {
-      snapshot = { ...snapshot, selectedSystemId };
+      if (selectedSystemId === 'whole-body') {
+        snapshot = {
+          ...snapshot,
+          selectedSystemId: snapshot.selectedSystemId === 'whole-body' ? firstEnabledSystemId() : 'whole-body',
+        };
+        emit();
+        return;
+      }
+
+      if (snapshot.selectedSystemId === 'whole-body') {
+        setSystemEnabled(selectedSystemId, !isSystemEnabled(selectedSystemId));
+        emit();
+        return;
+      }
+
+      const nextEnabledState = !isSystemEnabled(selectedSystemId);
+      setSystemEnabled(selectedSystemId, nextEnabledState);
+      snapshot = {
+        ...snapshot,
+        selectedSystemId: nextEnabledState ? snapshot.selectedSystemId : firstEnabledSystemId(),
+      };
       emit();
     },
     toggleSubsystem(subsystemId) {
@@ -83,6 +148,10 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
     setTheme(theme) {
       snapshot = { ...snapshot, theme };
       applyTheme(theme);
+      emit();
+    },
+    setLabelMode(labelMode) {
+      snapshot = { ...snapshot, labelMode };
       emit();
     },
     setPlaying(isPlaying) {
