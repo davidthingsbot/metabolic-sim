@@ -138,10 +138,12 @@ function createStubShellStateHost() {
     workspace: 'body-status' | 'event-planner';
     selectedSystemId: 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
     theme: 'light' | 'dark';
+    isPlaying: boolean;
   } = {
     workspace: 'body-status',
     selectedSystemId: 'whole-body',
     theme: 'light',
+    isPlaying: false,
   };
   const listeners = new Set<() => void>();
 
@@ -169,6 +171,10 @@ function createStubShellStateHost() {
       snapshot = { ...snapshot, theme };
       emit();
     },
+    setPlaying(isPlaying: boolean) {
+      snapshot = { ...snapshot, isPlaying };
+      emit();
+    },
   };
 }
 
@@ -184,11 +190,26 @@ describe('createShellModel', () => {
     expect(snapshot.workspace.value).toBe('body-status');
     expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(true);
     expect(snapshot.bands.header.viewerStatus).toBe('Viewing Whole Body');
+    expect(snapshot.bands.footer.isPlaying).toBe(false);
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Whole Body snapshot',
-      'Current focus',
-      'Next body-status views',
+      'Current trajectory',
+      'Recent checkpoint trail',
+      'How to read this',
     ]);
+  });
+
+  it('lets the controller toggle live playback state through the authoritative shell host', () => {
+    const shellStateHost = createStubShellStateHost();
+    const model = createShellModel({
+      engineHost: createStubSession(),
+      shellStateHost,
+    });
+
+    model.setPlaying(true);
+    expect(model.getSnapshot().bands.footer.isPlaying).toBe(true);
+
+    model.setPlaying(false);
+    expect(model.getSnapshot().bands.footer.isPlaying).toBe(false);
   });
 
   it('reacts to authoritative host updates from both engine and shell state', async () => {

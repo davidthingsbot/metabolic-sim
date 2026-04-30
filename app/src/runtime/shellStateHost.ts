@@ -5,6 +5,7 @@ export interface ShellStateSnapshot {
   workspace: Workspace;
   selectedSystemId: SystemId;
   theme: Theme;
+  isPlaying: boolean;
 }
 
 export interface ShellStateHost {
@@ -13,6 +14,7 @@ export interface ShellStateHost {
   setWorkspace(workspace: Workspace): void;
   selectSystem(systemId: SystemId): void;
   setTheme(theme: Theme): void;
+  setPlaying(isPlaying: boolean): void;
 }
 
 export interface CreateShellStateHostOptions {
@@ -26,6 +28,7 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
     workspace: options.initialWorkspace ?? 'body-status',
     selectedSystemId: options.initialSelectedSystemId ?? 'whole-body',
     theme: options.initialTheme,
+    isPlaying: false,
   };
   const listeners = new Set<() => void>();
 
@@ -54,6 +57,10 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
     setTheme(theme) {
       snapshot = { ...snapshot, theme };
       applyTheme(theme);
+      emit();
+    },
+    setPlaying(isPlaying) {
+      snapshot = { ...snapshot, isPlaying };
       emit();
     },
   };

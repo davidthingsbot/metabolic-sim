@@ -10,6 +10,7 @@ export interface ShellModel {
   setWorkspace(workspace: Workspace): void;
   selectSystem(systemId: SystemId): void;
   setTheme(theme: Theme): void;
+  setPlaying(isPlaying: boolean): void;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
   removeScheduledActivity(activityId: string): Promise<void>;
@@ -50,6 +51,7 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
         workspace: shellStateSnapshot.workspace,
         selectedSystemId: shellStateSnapshot.selectedSystemId,
         theme: shellStateSnapshot.theme,
+        isPlaying: shellStateSnapshot.isPlaying,
       });
     },
     subscribe(listener) {
@@ -64,6 +66,9 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     setTheme(nextTheme) {
       options.shellStateHost.setTheme(nextTheme);
+    },
+    setPlaying(isPlaying) {
+      options.shellStateHost.setPlaying(isPlaying);
     },
     async createMealActivity(input) {
       await options.engineHost.createMealActivity(input);

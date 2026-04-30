@@ -4,6 +4,8 @@ import { createShellSnapshot } from './shellSnapshot';
 
 function createSampleRun() {
   const run = createRun({ name: 'Lunch Replay' });
+  run.individuals[0].state.substances.glucose.gut = 12.4;
+  run.individuals[0].state.substances.glucose.cells = 18.6;
   run.individuals[0].state.substances.glucose.blood = 6.2;
   run.individuals[0].state.hormones.insulin = 18;
   run.activePlaybackTime = 5400;
@@ -11,22 +13,59 @@ function createSampleRun() {
 }
 
 describe('createShellSnapshot', () => {
-  it('builds body-status placeholders around the chosen run and system', () => {
+  it('builds live body-status results around the chosen run and system', () => {
+    const run = createSampleRun();
+    run.history.checkpoints.push({
+      playbackTime: 5100,
+      individuals: [{
+        ...structuredClone(run.individuals[0]),
+        state: {
+          ...structuredClone(run.individuals[0].state),
+          simulatedTime: 5100,
+          substances: {
+            glucose: {
+              gut: 14.8,
+              blood: 5.7,
+              cells: 16.9,
+            },
+          },
+          hormones: {
+            insulin: 15.5,
+          },
+        },
+      }],
+    });
+
     const snapshot = createShellSnapshot({
-      run: createSampleRun(),
+      run,
       workspace: 'body-status',
       selectedSystemId: 'blood-system',
       theme: 'light',
+      isPlaying: false,
     });
 
     expect(snapshot.runName).toBe('Lunch Replay');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 6.2 g');
     expect(snapshot.bands.header.highLevelStatus).toContain('signal 18.0 µU/mL');
     expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(true);
+    expect(snapshot.bands.midsection.copy).toContain('Live simulation results');
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
-      'Blood System snapshot',
-      'Current focus',
-      'Next body-status views',
+      'Current trajectory',
+      'Recent checkpoint trail',
+      'How to read this',
+    ]);
+    expect(snapshot.bands.midsection.liveResults.cards).toEqual([
+      expect.objectContaining({ title: 'Blood sugar', value: '6.2 g', delta: '+0.5 g vs 5 min ago' }),
+      expect.objectContaining({ title: 'Gut sugar', value: '12.4 g', delta: '-2.4 g vs 5 min ago' }),
+      expect.objectContaining({ title: 'Cell sugar', value: '18.6 g', delta: '+1.7 g vs 5 min ago' }),
+      expect.objectContaining({ title: 'Storage signal', value: '18.0 µU/mL', delta: '+2.5 µU/mL vs 5 min ago' }),
+    ]);
+    expect(snapshot.bands.midsection.liveResults.sparkline.points).toEqual([5.7, 6.2]);
+    expect(snapshot.bands.midsection.liveResults.sparkline.minLabel).toBe('5.7 g');
+    expect(snapshot.bands.midsection.liveResults.sparkline.maxLabel).toBe('6.2 g');
+    expect(snapshot.bands.midsection.liveResults.recentMoments).toEqual([
+      expect.objectContaining({ label: 'Now', playbackLabel: '1h 30m', bloodSugar: '6.2 g', gutSugar: '12.4 g' }),
+      expect.objectContaining({ label: '5 min ago', playbackLabel: '1h 25m', bloodSugar: '5.7 g', gutSugar: '14.8 g' }),
     ]);
   });
 
@@ -67,6 +106,7 @@ describe('createShellSnapshot', () => {
       workspace: 'event-planner',
       selectedSystemId: 'whole-body',
       theme: 'dark',
+      isPlaying: false,
     });
 
     expect(snapshot.workspace.label).toBe('Event Planner');
@@ -136,6 +176,7 @@ describe('createShellSnapshot', () => {
       workspace: 'body-status',
       selectedSystemId: 'whole-body',
       theme: 'light',
+      isPlaying: false,
     });
 
     expect(snapshot.bands.footer.scrubberStatus).toBe('Timeline 1h 30m · 3 checkpoints · Recorded 0h 00m–1h 30m');

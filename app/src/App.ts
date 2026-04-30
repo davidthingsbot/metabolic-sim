@@ -16,8 +16,23 @@ function useShellSnapshot(model: ShellModel): ShellSnapshot {
   return snapshot;
 }
 
+function usePlaybackLoop(model: ShellModel, isPlaying: boolean): void {
+  useEffect(() => {
+    if (!isPlaying) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void model.stepPlayback(60);
+    }, 300);
+
+    return () => window.clearInterval(timer);
+  }, [isPlaying, model]);
+}
+
 export const App: FunctionalComponent<AppProps> = ({ model }) => {
   const snapshot = useShellSnapshot(model);
+  usePlaybackLoop(model, snapshot.bands.footer.isPlaying);
 
   function toggleTheme(): void {
     const nextTheme = snapshot.theme === 'dark' ? 'light' : 'dark';
@@ -33,6 +48,7 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onRemoveScheduledActivity: (activityId) => void model.removeScheduledActivity(activityId),
     onSetPlaybackTime: (playbackTime) => void model.setPlaybackTime(playbackTime),
     onStepPlayback: () => void model.stepPlayback(),
+    onTogglePlaying: () => model.setPlaying(!snapshot.bands.footer.isPlaying),
     onBranchPlaybackTime: (playbackTime) => void model.branchActiveRunFromPlaybackTime(playbackTime),
     onToggleTheme: toggleTheme,
   });

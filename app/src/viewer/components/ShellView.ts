@@ -15,6 +15,7 @@ export interface ShellViewProps {
   onRemoveScheduledActivity: (activityId: string) => void;
   onSetPlaybackTime: (playbackTime: number) => void;
   onStepPlayback: () => void;
+  onTogglePlaying: () => void;
   onBranchPlaybackTime: (playbackTime: number) => void;
   onToggleTheme: () => void;
 }
@@ -28,6 +29,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   onRemoveScheduledActivity,
   onSetPlaybackTime,
   onStepPlayback,
+  onTogglePlaying,
   onBranchPlaybackTime,
   onToggleTheme,
 }) =>
@@ -52,6 +54,6 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
     h(BandView, {
       as: 'footer',
       className: 'shell-footer',
-      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback, onBranchPlaybackTime }),
+      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback, onTogglePlaying, onBranchPlaybackTime }),
     }),
   ]);

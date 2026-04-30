@@ -15,6 +15,25 @@ export interface ShellDetailCard {
   body: string;
 }
 
+export interface ShellLiveResultCard {
+  title: string;
+  value: string;
+  delta: string;
+}
+
+export interface ShellLiveResultSparkline {
+  points: number[];
+  minLabel: string;
+  maxLabel: string;
+}
+
+export interface ShellRecentMoment {
+  label: string;
+  playbackLabel: string;
+  bloodSugar: string;
+  gutSugar: string;
+}
+
 export interface ShellWorkspaceOption {
   value: Workspace;
   label: string;
@@ -62,11 +81,17 @@ export interface ShellSnapshot {
     midsection: {
       title: string;
       copy: string;
+      liveResults: {
+        cards: ShellLiveResultCard[];
+        sparkline: ShellLiveResultSparkline;
+        recentMoments: ShellRecentMoment[];
+      };
       detailCards: ShellDetailCard[];
     };
     footer: {
       scrubberStatus: string;
       playbackTime: number;
+      isPlaying: boolean;
       minPlaybackTime: number;
       maxPlaybackTime: number;
       playbackStep: number;
@@ -81,6 +106,7 @@ export interface CreateShellSnapshotOptions {
   workspace: Workspace;
   selectedSystemId: SystemId;
   theme: 'light' | 'dark';
+  isPlaying: boolean;
 }
 
 const SYSTEMS: Array<{ id: SystemId; label: string; caption: string }> = [
@@ -138,23 +164,111 @@ function createSelectedCheckpointIndex(run: Run): number {
   return selectedIndex >= 0 ? selectedIndex : 0;
 }
 
-function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[] {
-  const state = run.individuals[0]?.state;
-  const gutSugar = state?.substances.glucose.gut ?? 0;
-  const cellSugar = state?.substances.glucose.cells ?? 0;
+function formatSignedDelta(value: number, fractionDigits: number, unit: string): string {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '±';
+  return `${sign}${Math.abs(value).toFixed(fractionDigits)} ${unit}`;
+}
+
+function createPreviousCheckpoint(run: Run): Run['history']['checkpoints'][number] | undefined {
+  const checkpoints = [...run.history.checkpoints].sort((left, right) => right.playbackTime - left.playbackTime);
+  return checkpoints.find((checkpoint) => checkpoint.playbackTime < run.activePlaybackTime);
+}
+
+function createRecentHistoryEntries(run: Run): Array<{ playbackTime: number; bloodSugar: number; gutSugar: number }> {
+  const recentWindowStart = Math.max(run.activePlaybackTime - 3600, 0);
+  const entries = run.history.checkpoints
+    .filter((checkpoint) => checkpoint.playbackTime >= recentWindowStart && checkpoint.playbackTime <= run.activePlaybackTime)
+    .sort((left, right) => left.playbackTime - right.playbackTime)
+    .map((checkpoint) => ({
+      playbackTime: checkpoint.playbackTime,
+      bloodSugar: checkpoint.individuals[0]?.state.substances.glucose.blood ?? 0,
+      gutSugar: checkpoint.individuals[0]?.state.substances.glucose.gut ?? 0,
+    }));
+
+  if (entries[entries.length - 1]?.playbackTime !== run.activePlaybackTime) {
+    entries.push({
+      playbackTime: run.activePlaybackTime,
+      bloodSugar: run.individuals[0]?.state.substances.glucose.blood ?? 0,
+      gutSugar: run.individuals[0]?.state.substances.glucose.gut ?? 0,
+    });
+  }
+
+  return entries;
+}
+
+function createLiveResultCards(run: Run): ShellLiveResultCard[] {
+  const currentState = run.individuals[0]?.state;
+  const previousState = createPreviousCheckpoint(run)?.individuals[0]?.state;
+  const minutesAgoLabel = previousState ? `${Math.round((run.activePlaybackTime - (createPreviousCheckpoint(run)?.playbackTime ?? run.activePlaybackTime)) / 60)} min ago` : 'baseline';
 
   return [
     {
-      title: `${systemLabel} snapshot`,
-      body: `Static shell placeholder for the ${systemLabel.toLowerCase()} workspace. Active body: ${run.individuals[0]?.name ?? 'Body 1'}.`,
+      title: 'Blood sugar',
+      value: `${(currentState?.substances.glucose.blood ?? 0).toFixed(1)} g`,
+      delta: `${formatSignedDelta((currentState?.substances.glucose.blood ?? 0) - (previousState?.substances.glucose.blood ?? 0), 1, 'g')} vs ${minutesAgoLabel}`,
     },
     {
-      title: 'Current focus',
-      body: `Playback at ${formatHours(run.activePlaybackTime)}. Gut sugar ${gutSugar.toFixed(1)} g. Cell uptake ${cellSugar.toFixed(1)} g.`,
+      title: 'Gut sugar',
+      value: `${(currentState?.substances.glucose.gut ?? 0).toFixed(1)} g`,
+      delta: `${formatSignedDelta((currentState?.substances.glucose.gut ?? 0) - (previousState?.substances.glucose.gut ?? 0), 1, 'g')} vs ${minutesAgoLabel}`,
     },
     {
-      title: 'Next body-status views',
-      body: 'Later slices will replace these cards with the anatomical whole-body view, charts, and system-specific detail stacks.',
+      title: 'Cell sugar',
+      value: `${(currentState?.substances.glucose.cells ?? 0).toFixed(1)} g`,
+      delta: `${formatSignedDelta((currentState?.substances.glucose.cells ?? 0) - (previousState?.substances.glucose.cells ?? 0), 1, 'g')} vs ${minutesAgoLabel}`,
+    },
+    {
+      title: 'Storage signal',
+      value: `${(currentState?.hormones.insulin ?? 0).toFixed(1)} µU/mL`,
+      delta: `${formatSignedDelta((currentState?.hormones.insulin ?? 0) - (previousState?.hormones.insulin ?? 0), 1, 'µU/mL')} vs ${minutesAgoLabel}`,
+    },
+  ];
+}
+
+function createLiveResultSparkline(run: Run): ShellLiveResultSparkline {
+  const points = createRecentHistoryEntries(run)
+    .slice(-12)
+    .map((entry) => entry.bloodSugar);
+  const minPoint = Math.min(...points);
+  const maxPoint = Math.max(...points);
+
+  return {
+    points,
+    minLabel: `${minPoint.toFixed(1)} g`,
+    maxLabel: `${maxPoint.toFixed(1)} g`,
+  };
+}
+
+function createRecentMoments(run: Run): ShellRecentMoment[] {
+  return createRecentHistoryEntries(run)
+    .sort((left, right) => right.playbackTime - left.playbackTime)
+    .slice(0, 3)
+    .map((entry, index) => ({
+      label: index === 0 ? 'Now' : `${Math.round((run.activePlaybackTime - entry.playbackTime) / 60)} min ago`,
+      playbackLabel: formatHours(entry.playbackTime),
+      bloodSugar: `${entry.bloodSugar.toFixed(1)} g`,
+      gutSugar: `${entry.gutSugar.toFixed(1)} g`,
+    }));
+}
+
+function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[] {
+  const recentMoments = createRecentMoments(run);
+  const sparkline = createLiveResultSparkline(run);
+
+  return [
+    {
+      title: 'Current trajectory',
+      body: `${systemLabel} is streaming from recorded checkpoints for ${run.individuals[0]?.name ?? 'Body 1'}. Blood sugar ranges ${sparkline.minLabel}–${sparkline.maxLabel} across the visible trail.`,
+    },
+    {
+      title: 'Recent checkpoint trail',
+      body: recentMoments
+        .map((moment) => `${moment.label} ${moment.playbackLabel}: blood ${moment.bloodSugar}, gut ${moment.gutSugar}`)
+        .join(' · '),
+    },
+    {
+      title: 'How to read this',
+      body: 'Top cards show current compartment totals and their change since the last recorded checkpoint. The sparkline condenses recent blood-sugar history without introducing a heavy charting system.',
     },
   ];
 }
@@ -253,6 +367,11 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
   const workspaceLabel = options.workspace === 'body-status' ? 'Body Status' : 'Event Planner';
   const oneOffLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'one-off').length;
   const repeatingLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'repeating-cycle').length;
+  const bodyStatusLiveResults = {
+    cards: createLiveResultCards(options.run),
+    sparkline: createLiveResultSparkline(options.run),
+    recentMoments: createRecentMoments(options.run),
+  };
 
   return {
     runName: options.run.name,
@@ -285,11 +404,12 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
       },
       midsection: {
-        title: options.workspace === 'body-status' ? 'Master / detail shell' : 'Planner shell',
+        title: options.workspace === 'body-status' ? 'Live results panel' : 'Planner shell',
         copy:
           options.workspace === 'body-status'
-            ? 'Static body-status placeholders now sit on top of the persisted run model.'
+            ? 'Live simulation results stream from the authoritative run history while the shell stays mobile-first.'
             : 'Static planner placeholders use the same active run and timeline model.',
+        liveResults: bodyStatusLiveResults,
         detailCards:
           options.workspace === 'body-status'
             ? createBodyStatusCards(selectedSystem.label, options.run)
@@ -298,6 +418,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
       footer: {
         scrubberStatus: createScrubberStatus(options.run),
         playbackTime: options.run.activePlaybackTime,
+        isPlaying: options.isPlaying,
         minPlaybackTime: 0,
         maxPlaybackTime: createMaxPlaybackTime(options.run),
         playbackStep: 1,
