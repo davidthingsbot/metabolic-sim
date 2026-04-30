@@ -272,6 +272,12 @@ h3 {
   margin: 0;
 }
 
+.planner-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .timeline-header {
   display: flex;
   justify-content: space-between;

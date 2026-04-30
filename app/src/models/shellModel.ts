@@ -1,7 +1,7 @@
 import type { Theme } from '../theme';
 import type { EngineHost } from '../runtime/engineHost';
 import type { ShellStateHost } from '../runtime/shellStateHost';
-import type { CreateScheduledMealActivityInput } from '../runs/types';
+import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../runs/types';
 import { createShellSnapshot, type ShellSnapshot, type SystemId, type Workspace } from './shellSnapshot';
 
 export interface ShellModel {
@@ -11,6 +11,8 @@ export interface ShellModel {
   selectSystem(systemId: SystemId): void;
   setTheme(theme: Theme): void;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
+  updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
+  removeScheduledActivity(activityId: string): Promise<void>;
   setPlaybackTime(playbackTime: number): Promise<void>;
   branchActiveRunFromPlaybackTime(playbackTime: number, runName?: string): Promise<void>;
   stepPlayback(stepSeconds?: number): Promise<void>;
@@ -65,6 +67,12 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     async createMealActivity(input) {
       await options.engineHost.createMealActivity(input);
+    },
+    async updateMealActivity(activityId, input) {
+      await options.engineHost.updateMealActivity(activityId, input);
+    },
+    async removeScheduledActivity(activityId) {
+      await options.engineHost.removeScheduledActivity(activityId);
     },
     async setPlaybackTime(playbackTime) {
       await options.engineHost.restorePlaybackTime(playbackTime);

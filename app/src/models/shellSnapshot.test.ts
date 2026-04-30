@@ -108,6 +108,16 @@ describe('createShellSnapshot', () => {
         cycleDurationMinutes: 10080,
       }),
     ]);
+    expect(snapshot.planner.mealOptions).toEqual([
+      expect.objectContaining({
+        id: 'daily-meal',
+        label: 'Daily · day 0 · 01:30 · 30 min · 45 g carbs',
+      }),
+      expect.objectContaining({
+        id: 'one-off-meal',
+        label: 'One-Off · day 0 · 06:00 · 45 min · 30 g carbs',
+      }),
+    ]);
   });
 
   it('exposes recorded history details in the footer scrubber status', () => {

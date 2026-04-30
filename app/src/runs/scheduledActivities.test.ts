@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createRun } from './runFactory';
-import { appendScheduledMealActivity, getMealCarbsForPlaybackWindow } from './scheduledActivities';
+import {
+  appendScheduledMealActivity,
+  getMealCarbsForPlaybackWindow,
+  removeScheduledActivity,
+  replaceScheduledMealActivity,
+} from './scheduledActivities';
 import type { ScheduleLane, ScheduledMealActivity } from './types';
 
 describe('getMealCarbsForPlaybackWindow', () => {
@@ -75,5 +80,61 @@ describe('getMealCarbsForPlaybackWindow', () => {
     expect(oneOffMeal).toEqual(expect.objectContaining({ startPlaybackTime: 9000 }));
     expect(repeatingMeal).toEqual(expect.objectContaining({ startCycleMinute: 1590 }));
     expect(run.scheduledActivities).toEqual([oneOffMeal, repeatingMeal]);
+  });
+
+  it('replaces an existing meal in-place while re-resolving its lane placement format', () => {
+    const run = createRun({ name: 'Replace Test' });
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const weeklyLane = run.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    );
+
+    if (!oneOffLane || !weeklyLane || weeklyLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and weekly lanes');
+    }
+
+    const meal = appendScheduledMealActivity(run, {
+      laneId: oneOffLane.id,
+      startMinute: 150,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+
+    const replacedMeal = replaceScheduledMealActivity(run, meal.id, {
+      laneId: weeklyLane.id,
+      startMinute: 1590,
+      durationMinutes: 30,
+      carbsGrams: 25,
+    });
+
+    expect(replacedMeal).toEqual({
+      id: meal.id,
+      laneId: weeklyLane.id,
+      type: 'meal',
+      startCycleMinute: 1590,
+      durationMinutes: 30,
+      carbsGrams: 25,
+    });
+    expect(run.scheduledActivities).toEqual([replacedMeal]);
+  });
+
+  it('removes an existing scheduled activity by id', () => {
+    const run = createRun({ name: 'Remove Test' });
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+
+    if (!oneOffLane) {
+      throw new Error('Expected one-off lane');
+    }
+
+    const meal = appendScheduledMealActivity(run, {
+      laneId: oneOffLane.id,
+      startMinute: 150,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+
+    removeScheduledActivity(run, meal.id);
+
+    expect(run.scheduledActivities).toEqual([]);
   });
 });

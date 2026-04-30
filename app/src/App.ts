@@ -29,6 +29,8 @@ export const App: FunctionalComponent<AppProps> = ({ model }) => {
     onSelectWorkspace: (workspace) => model.setWorkspace(workspace),
     onSelectSystem: (systemId) => model.selectSystem(systemId),
     onCreateMealActivity: (input) => void model.createMealActivity(input),
+    onUpdateMealActivity: (activityId, input) => void model.updateMealActivity(activityId, input),
+    onRemoveScheduledActivity: (activityId) => void model.removeScheduledActivity(activityId),
     onSetPlaybackTime: (playbackTime) => void model.setPlaybackTime(playbackTime),
     onStepPlayback: () => void model.stepPlayback(),
     onBranchPlaybackTime: (playbackTime) => void model.branchActiveRunFromPlaybackTime(playbackTime),

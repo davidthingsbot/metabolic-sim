@@ -28,6 +28,16 @@ export interface ShellPlannerLaneOption {
   cycleDurationMinutes?: number;
 }
 
+export interface ShellPlannerMealOption {
+  id: string;
+  label: string;
+  laneId: string;
+  day: number;
+  timeOfDay: string;
+  durationMinutes: number;
+  carbsGrams: number;
+}
+
 export interface ShellSnapshot {
   runName: string;
   theme: 'light' | 'dark';
@@ -38,6 +48,7 @@ export interface ShellSnapshot {
   };
   planner: {
     laneOptions: ShellPlannerLaneOption[];
+    mealOptions: ShellPlannerMealOption[];
   };
   systems: ShellSystemItem[];
   bands: {
@@ -88,6 +99,13 @@ function formatHours(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+}
+
+function formatTimeOfDayFromMinute(totalMinutes: number): string {
+  const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalizedMinutes / 60);
+  const minutes = normalizedMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 function formatCycleDurationMinutes(cycleDurationMinutes: number): string {
@@ -203,6 +221,30 @@ function createPlannerLaneOptions(run: Run): ShellPlannerLaneOption[] {
   );
 }
 
+function createPlannerMealOptions(run: Run): ShellPlannerMealOption[] {
+  const laneById = new Map(run.scheduleLanes.map((lane) => [lane.id, lane]));
+
+  return run.scheduledActivities
+    .filter((activity): activity is ScheduledMealActivity => activity.type === 'meal')
+    .map((activity) => {
+      const lane = laneById.get(activity.laneId);
+      const startMinute = 'startPlaybackTime' in activity ? Math.floor(activity.startPlaybackTime / 60) : activity.startCycleMinute;
+      const day = Math.floor(startMinute / 1440);
+      const timeOfDay = formatTimeOfDayFromMinute(startMinute);
+
+      return {
+        id: activity.id,
+        label: `${lane?.name ?? activity.laneId} · day ${day} · ${timeOfDay} · ${activity.durationMinutes} min · ${activity.carbsGrams} g carbs`,
+        laneId: activity.laneId,
+        day,
+        timeOfDay,
+        durationMinutes: activity.durationMinutes,
+        carbsGrams: activity.carbsGrams,
+      };
+    })
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
   const state = options.run.individuals[0]?.state;
   const bloodSugar = state?.substances.glucose.blood ?? 0;
@@ -225,6 +267,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
     },
     planner: {
       laneOptions: createPlannerLaneOptions(options.run),
+      mealOptions: createPlannerMealOptions(options.run),
     },
     systems: SYSTEMS.map((system) => ({
       ...system,

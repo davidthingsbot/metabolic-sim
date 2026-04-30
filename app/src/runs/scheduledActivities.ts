@@ -5,6 +5,7 @@ import type {
   ScheduleLane,
   ScheduledActivity,
   ScheduledMealActivity,
+  UpdateScheduledMealActivityInput,
 } from './types';
 
 function createScheduledActivityId(): string {
@@ -90,6 +91,33 @@ export function appendScheduledMealActivity(run: Run, input: CreateScheduledMeal
 
   run.scheduledActivities.push(scheduledMealActivity);
   return scheduledMealActivity;
+}
+
+export function replaceScheduledMealActivity(run: Run, activityId: string, input: UpdateScheduledMealActivityInput): ScheduledMealActivity {
+  const activityIndex = run.scheduledActivities.findIndex((activity) => activity.id === activityId);
+
+  if (activityIndex < 0) {
+    throw new Error(`Cannot update missing activity ${activityId}`);
+  }
+
+  const scratchRun: Run = {
+    ...run,
+    scheduledActivities: [],
+  };
+  const nextActivity = appendScheduledMealActivity(scratchRun, input);
+  nextActivity.id = activityId;
+  run.scheduledActivities[activityIndex] = nextActivity;
+  return nextActivity;
+}
+
+export function removeScheduledActivity(run: Run, activityId: string): void {
+  const activityIndex = run.scheduledActivities.findIndex((activity) => activity.id === activityId);
+
+  if (activityIndex < 0) {
+    throw new Error(`Cannot remove missing activity ${activityId}`);
+  }
+
+  run.scheduledActivities.splice(activityIndex, 1);
 }
 
 export function getMealCarbsForPlaybackWindow(

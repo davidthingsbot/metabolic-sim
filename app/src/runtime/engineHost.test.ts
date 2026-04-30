@@ -305,6 +305,113 @@ describe('createEngineHost', () => {
     expect(persistedRun?.individuals[0].state).toEqual(expectedState);
   });
 
+  it('edits a planned meal through the authoritative host, replays the active run, and persists the replacement', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Planner Edit Run' });
+    const oneOffLane = seededRun.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const weeklyLane = seededRun.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    );
+
+    if (!oneOffLane || !weeklyLane) {
+      throw new Error('Expected one-off and weekly lanes');
+    }
+
+    seededRun.scheduledActivities = [{
+      id: 'editable-meal',
+      laneId: oneOffLane.id,
+      type: 'meal',
+      startPlaybackTime: 0,
+      durationMinutes: 5,
+      carbsGrams: 50,
+    }];
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.stepPlayback(300);
+    await host.updateMealActivity('editable-meal', {
+      laneId: weeklyLane.id,
+      startMinute: 1,
+      durationMinutes: 2,
+      carbsGrams: 20,
+    });
+
+    const snapshot = host.getSnapshot();
+    const persistedRun = await repository.loadActiveRun();
+    const expectedState = createRun({ name: 'Expected Replay' }).individuals[0].state;
+    step(expectedState, 60);
+    expectedState.substances.glucose.gut += 10;
+    step(expectedState, 60);
+    expectedState.substances.glucose.gut += 10;
+    step(expectedState, 60);
+    step(expectedState, 60);
+    step(expectedState, 60);
+
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.scheduledActivities).toEqual([
+      {
+        id: 'editable-meal',
+        laneId: weeklyLane.id,
+        type: 'meal',
+        startCycleMinute: 1,
+        durationMinutes: 2,
+        carbsGrams: 20,
+      },
+    ]);
+    expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(persistedRun?.scheduledActivities).toEqual(snapshot.activeRun.scheduledActivities);
+    expect(persistedRun?.individuals[0].state).toEqual(expectedState);
+  });
+
+  it('removes a planned meal through the authoritative host, replays the active run, and persists the deletion', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Planner Remove Run' });
+    const oneOffLane = seededRun.scheduleLanes.find((lane) => lane.kind === 'one-off');
+
+    if (!oneOffLane) {
+      throw new Error('Expected one-off lane');
+    }
+
+    seededRun.scheduledActivities = [{
+      id: 'removable-meal',
+      laneId: oneOffLane.id,
+      type: 'meal',
+      startPlaybackTime: 0,
+      durationMinutes: 5,
+      carbsGrams: 50,
+    }];
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.stepPlayback(300);
+    await host.removeScheduledActivity('removable-meal');
+
+    const snapshot = host.getSnapshot();
+    const persistedRun = await repository.loadActiveRun();
+    const expectedState = createRun({ name: 'Expected Replay' }).individuals[0].state;
+    for (let minute = 0; minute < 5; minute += 1) {
+      step(expectedState, 60);
+    }
+
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.scheduledActivities).toEqual([]);
+    expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(persistedRun?.scheduledActivities).toEqual([]);
+    expect(persistedRun?.individuals[0].state).toEqual(snapshot.activeRun.individuals[0].state);
+  });
+
   it('branches the active run from a recorded checkpoint, persists the new run, and switches authority to it', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const sourceRun = createRun({ name: 'Source Run' });

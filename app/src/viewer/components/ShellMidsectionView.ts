@@ -1,7 +1,7 @@
 import { h, type FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
-import type { CreateScheduledMealActivityInput } from '../../runs/types';
+import type { CreateScheduledMealActivityInput, UpdateScheduledMealActivityInput } from '../../runs/types';
 import type { ShellSnapshot, SystemId, Workspace } from '../../models/shellSnapshot';
 import { createPlannerMealActivityInput } from './plannerMealForm';
 import { SplitView } from './SplitView';
@@ -11,6 +11,8 @@ export interface ShellMidsectionViewProps {
   onSelectWorkspace: (workspace: Workspace) => void;
   onSelectSystem: (systemId: SystemId) => void;
   onCreateMealActivity: (input: CreateScheduledMealActivityInput) => void;
+  onUpdateMealActivity: (activityId: string, input: UpdateScheduledMealActivityInput) => void;
+  onRemoveScheduledActivity: (activityId: string) => void;
 }
 
 export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> = ({
@@ -18,7 +20,10 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
   onSelectWorkspace,
   onSelectSystem,
   onCreateMealActivity,
+  onUpdateMealActivity,
+  onRemoveScheduledActivity,
 }) => {
+  const [selectedMealId, setSelectedMealId] = useState('');
   const [laneId, setLaneId] = useState(snapshot.planner.laneOptions[0]?.id ?? '');
   const [day, setDay] = useState(0);
   const [timeOfDay, setTimeOfDay] = useState('08:00');
@@ -31,7 +36,26 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
     }
   }, [snapshot.planner.laneOptions, laneId]);
 
+  useEffect(() => {
+    if (!snapshot.planner.mealOptions.some((meal) => meal.id === selectedMealId)) {
+      setSelectedMealId(snapshot.planner.mealOptions[0]?.id ?? '');
+    }
+  }, [snapshot.planner.mealOptions, selectedMealId]);
+
   const selectedLane = snapshot.planner.laneOptions.find((lane) => lane.id === laneId) ?? snapshot.planner.laneOptions[0];
+  const selectedMeal = snapshot.planner.mealOptions.find((meal) => meal.id === selectedMealId);
+
+  useEffect(() => {
+    if (!selectedMeal) {
+      return;
+    }
+
+    setLaneId(selectedMeal.laneId);
+    setDay(selectedMeal.day);
+    setTimeOfDay(selectedMeal.timeOfDay);
+    setDurationMinutes(selectedMeal.durationMinutes);
+    setCarbsGrams(selectedMeal.carbsGrams);
+  }, [selectedMealId, selectedMeal]);
 
   function submitPlannerMeal(event: Event): void {
     event.preventDefault();
@@ -39,13 +63,33 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
       return;
     }
 
-    onCreateMealActivity(createPlannerMealActivityInput({
+    const input = createPlannerMealActivityInput({
       laneId,
       day,
       timeOfDay,
       durationMinutes,
       carbsGrams,
-    }));
+    });
+
+    if (selectedMealId) {
+      onUpdateMealActivity(selectedMealId, input);
+      return;
+    }
+
+    onCreateMealActivity(input);
+  }
+
+  function clearSelection(): void {
+    setSelectedMealId('');
+  }
+
+  function removeSelectedMeal(): void {
+    if (!selectedMealId) {
+      return;
+    }
+
+    onRemoveScheduledActivity(selectedMealId);
+    setSelectedMealId('');
   }
 
   return h(SplitView, {
@@ -92,7 +136,17 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
       ]),
       snapshot.workspace.value === 'event-planner'
         ? h('form', { class: 'planner-form detail-card', onSubmit: submitPlannerMeal }, [
-            h('h3', null, 'Add meal'),
+            h('h3', null, selectedMeal ? 'Edit meal' : 'Add meal'),
+            h('label', { class: 'planner-field' }, [
+              h('span', null, 'Existing meals'),
+              h('select', {
+                value: selectedMealId,
+                onInput: (event: JSX.TargetedEvent<HTMLSelectElement, Event>) => setSelectedMealId(event.currentTarget.value),
+              }, [
+                h('option', { value: '' }, 'Create new meal'),
+                ...snapshot.planner.mealOptions.map((meal) => h('option', { key: meal.id, value: meal.id }, meal.label)),
+              ]),
+            ]),
             h('label', { class: 'planner-field' }, [
               h('span', null, 'Lane'),
               h('select', {
@@ -147,7 +201,15 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
                 ? `Repeats inside a ${selectedLane.cycleDurationMinutes}-minute cycle from lane start.`
                 : 'Places a one-off meal at an absolute playback time from run start.',
             ),
-            h('button', { class: 'control-chip', type: 'submit' }, 'Create meal'),
+            h('div', { class: 'planner-action-row' }, [
+              h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
+              selectedMeal
+                ? h('button', { class: 'control-chip', type: 'button', onClick: clearSelection }, 'Cancel edit')
+                : null,
+              selectedMeal
+                ? h('button', { class: 'control-chip', type: 'button', onClick: removeSelectedMeal }, 'Remove meal')
+                : null,
+            ]),
           ])
         : null,
       h('div', { class: 'detail-card-stack' },

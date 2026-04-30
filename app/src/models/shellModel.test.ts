@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRun } from '../runs/runFactory';
-import { appendScheduledMealActivity } from '../runs/scheduledActivities';
+import { appendScheduledMealActivity, removeScheduledActivity, replaceScheduledMealActivity } from '../runs/scheduledActivities';
 import type { CreateScheduledMealActivityInput } from '../runs/types';
 import { createShellModel } from './shellModel';
 
@@ -42,6 +42,18 @@ function createStubSession(run = createSampleRun()) {
     async createMealActivity(input: CreateScheduledMealActivityInput) {
       const draft = structuredClone(activeRun);
       appendScheduledMealActivity(draft, input);
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async updateMealActivity(activityId: string, input: CreateScheduledMealActivityInput) {
+      const draft = structuredClone(activeRun);
+      replaceScheduledMealActivity(draft, activityId, input);
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async removeScheduledActivity(activityId: string) {
+      const draft = structuredClone(activeRun);
+      removeScheduledActivity(draft, activityId);
       activeRun = draft;
       listeners.forEach((listener) => listener());
     },
@@ -275,6 +287,73 @@ describe('createShellModel', () => {
       'Alternating Days',
       'Weekly',
     ]);
+    expect(snapshot.planner.mealOptions).toEqual([
+      expect.objectContaining({
+        id: expect.any(String),
+        label: 'One-Off · day 0 · 02:00 · 45 min · 60 g carbs',
+      }),
+    ]);
+  });
+
+  it('updates an existing meal through the shell model and immediately surfaces the replacement in the planner snapshot', async () => {
+    const model = createShellModel({
+      engineHost: createStubSession(createRun({ name: 'Editable Run' })),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    model.setWorkspace('event-planner');
+    await model.createMealActivity({
+      laneId: model.getSnapshot().planner.laneOptions[0]?.id ?? '',
+      startMinute: 120,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+
+    const createdMealId = model.getSnapshot().planner.mealOptions[0]?.id;
+    const weeklyLaneId = model.getSnapshot().planner.laneOptions.find((lane) => lane.label === 'Weekly')?.id ?? '';
+
+    if (!createdMealId) {
+      throw new Error('Expected created meal id');
+    }
+
+    await model.updateMealActivity(createdMealId, {
+      laneId: weeklyLaneId,
+      startMinute: 1590,
+      durationMinutes: 30,
+      carbsGrams: 25,
+    });
+
+    expect(model.getSnapshot().planner.mealOptions).toEqual([
+      expect.objectContaining({
+        id: createdMealId,
+        label: 'Weekly · day 1 · 02:30 · 30 min · 25 g carbs',
+      }),
+    ]);
+  });
+
+  it('removes an existing meal through the shell model and immediately clears it from the planner snapshot', async () => {
+    const model = createShellModel({
+      engineHost: createStubSession(createRun({ name: 'Editable Run' })),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    model.setWorkspace('event-planner');
+    await model.createMealActivity({
+      laneId: model.getSnapshot().planner.laneOptions[0]?.id ?? '',
+      startMinute: 120,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+
+    const createdMealId = model.getSnapshot().planner.mealOptions[0]?.id;
+
+    if (!createdMealId) {
+      throw new Error('Expected created meal id');
+    }
+
+    await model.removeScheduledActivity(createdMealId);
+
+    expect(model.getSnapshot().planner.mealOptions).toEqual([]);
   });
 
   it('branches the active run from the selected recorded checkpoint through the authoritative host', async () => {
