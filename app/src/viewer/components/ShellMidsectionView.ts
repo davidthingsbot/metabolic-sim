@@ -156,40 +156,31 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
       ]),
       snapshot.workspace.value === 'body-status'
         ? h('section', { class: 'live-results-panel' }, [
-            h('div', { class: 'live-results-grid' },
-              snapshot.bands.midsection.liveResults.cards.map((card) =>
+            h('div', { class: 'live-results-grid' }, [
+              ...snapshot.bands.midsection.liveResults.cards.map((card) =>
                 h('article', { key: card.title, class: 'live-result-card' }, [
                   h('span', { class: 'live-result-title' }, card.title),
                   h('strong', { class: 'live-result-value' }, card.value),
                   h('span', { class: 'live-result-delta' }, card.delta),
                 ]),
               ),
-            ),
-            h('article', { class: 'detail-card sparkline-card' }, [
-              h('div', { class: 'sparkline-heading' }, [
-                h('h3', null, 'Blood sugar trail'),
-                h('span', { class: 'sparkline-range' }, `${snapshot.bands.midsection.liveResults.sparkline.minLabel}–${snapshot.bands.midsection.liveResults.sparkline.maxLabel}`),
+              h('article', { class: 'live-result-card sparkline-card' }, [
+                h('div', { class: 'sparkline-heading' }, [
+                  h('span', { class: 'live-result-title' }, 'Blood sugar trend'),
+                  h('span', { class: 'sparkline-range' }, `${snapshot.bands.midsection.liveResults.sparkline.minLabel}–${snapshot.bands.midsection.liveResults.sparkline.maxLabel}`),
+                ]),
+                h('svg', { class: 'sparkline', viewBox: '0 0 160 48', 'aria-label': 'Recent blood sugar history' }, [
+                  h('path', {
+                    d: createSparklinePath(snapshot.bands.midsection.liveResults.sparkline.points),
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    'stroke-width': '2',
+                    'stroke-linecap': 'round',
+                    'stroke-linejoin': 'round',
+                  }),
+                ]),
+                h('span', { class: 'live-result-delta' }, `${snapshot.bands.midsection.liveResults.recentMoments.length} recent checkpoints`),
               ]),
-              h('svg', { class: 'sparkline', viewBox: '0 0 160 48', 'aria-label': 'Blood sugar history sparkline' }, [
-                h('path', {
-                  d: createSparklinePath(snapshot.bands.midsection.liveResults.sparkline.points),
-                  fill: 'none',
-                  stroke: 'currentColor',
-                  'stroke-width': '3',
-                  'stroke-linecap': 'round',
-                  'stroke-linejoin': 'round',
-                }),
-              ]),
-              h('div', { class: 'recent-moment-list' },
-                snapshot.bands.midsection.liveResults.recentMoments.map((moment) =>
-                  h('div', { key: `${moment.label}-${moment.playbackLabel}`, class: 'recent-moment-row' }, [
-                    h('strong', null, moment.label),
-                    h('span', null, moment.playbackLabel),
-                    h('span', null, `Blood ${moment.bloodSugar}`),
-                    h('span', null, `Gut ${moment.gutSugar}`),
-                  ]),
-                ),
-              ),
             ]),
           ])
         : null,
