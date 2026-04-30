@@ -25,11 +25,14 @@ The naming dictionary in `src/naming/` carries the mapping from functional name 
 
 ## Tech choices that are open
 
-- The reactive layer (Preact, lit, hand-rolled, or other small option). Pick on the first phase that genuinely needs it.
 - The build tool (Vite, esbuild, or other). Pick on the first phase that needs a build.
 - The exact set of visual styles beyond the default Anatomical style — see `../design/design.md` Section 14.
 
 When you make one of these decisions, add a note to the change log in `../design/plan.md` so future-you remembers why.
+
+## Tech choices settled after the initial scaffold
+
+- **Preact** is the chosen reactive layer for the app shell and upcoming views.
 
 ## Engine purity
 
