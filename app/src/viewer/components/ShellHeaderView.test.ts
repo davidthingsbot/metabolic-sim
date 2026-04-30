@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ComponentChildren, VNode } from 'preact';
-import { ShellFooterView } from './ShellFooterView';
+import { ShellHeaderView } from './ShellHeaderView';
 import type { ShellSnapshot } from '../../models/shellSnapshot';
 
 function createSnapshot(): ShellSnapshot {
   return {
-    runName: 'Footer Test',
+    runName: 'Metabolic Run',
     theme: 'light',
     workspace: {
       value: 'body-status',
@@ -21,9 +21,9 @@ function createSnapshot(): ShellSnapshot {
     bands: {
       header: {
         eyebrow: 'Metabolic Simulator',
-        highLevelStatus: 'Status',
+        highLevelStatus: 'Body steady, recent meal digesting.',
         viewerStatus: 'Viewing Whole Body',
-        runChipLabel: 'Run: Footer Test',
+        runChipLabel: 'Run: Metabolic Run',
         themeToggleLabel: 'Dark mode',
       },
       midsection: {
@@ -41,31 +41,19 @@ function createSnapshot(): ShellSnapshot {
         detailCards: [],
       },
       footer: {
-        scrubberStatus: 'Timeline 1h 30m · 4 checkpoints · Recorded 0h 00m–3h 00m',
-        playbackTime: 5400,
-        isPlaying: true,
+        scrubberStatus: 'Timeline status',
+        playbackTime: 0,
+        isPlaying: false,
         minPlaybackTime: 0,
-        maxPlaybackTime: 3,
+        maxPlaybackTime: 0,
         playbackStep: 1,
-        checkpointTimes: [0, 1800, 5400, 10800],
-        selectedCheckpointIndex: 2,
-        mealTimelineEvents: [
-          {
-            id: 'lunch-at-5400',
-            label: 'Daily meal',
-            laneLabel: 'Daily',
-            startLabel: '1h 30m',
-            endLabel: '2h 00m',
-            summary: '45.0 g carbs over 30 min',
-            status: 'active',
-            offsetPercent: 50,
-            widthPercent: 16.67,
-          },
-        ],
+        checkpointTimes: [0],
+        selectedCheckpointIndex: 0,
+        mealTimelineEvents: [],
         eventReadout: {
-          current: 'Now: Daily meal is underway · 1h 30m–2h 00m · 45.0 g carbs over 30 min.',
-          mostRecent: 'Most recent: One-Off meal finished at 1h 00m · 20.0 g carbs over 30 min.',
-          next: 'Next: Daily meal starts at 3h 00m · 15.0 g carbs over 20 min.',
+          current: 'Now: No scheduled meal is active.',
+          mostRecent: 'Most recent: No meal has completed yet.',
+          next: 'Next: No upcoming meal is scheduled.',
         },
       },
     },
@@ -105,23 +93,25 @@ function findByClassName(node: ComponentChildren, className: string): VNode | un
   return findByClassName(vnode.props?.children, className);
 }
 
-describe('ShellFooterView', () => {
-  it('renders meal markers and explanatory readout from the footer snapshot', () => {
-    const view = ShellFooterView({
+describe('ShellHeaderView', () => {
+  it('renders a compact title row with icon and viewer controls only', () => {
+    const view = ShellHeaderView({
       snapshot: createSnapshot(),
-      onSetPlaybackTime: () => undefined,
-      onStepPlayback: () => undefined,
-      onTogglePlaying: () => undefined,
-      onBranchPlaybackTime: () => undefined,
+      onToggleTheme: () => undefined,
     });
 
-    const marker = findByClassName(view, 'timeline-meal-event timeline-meal-event-active');
-    const readout = findByClassName(view, 'timeline-event-readout');
+    const titleRow = findByClassName(view, 'header-brand');
+    const viewerControls = findByClassName(view, 'header-viewer-controls');
+    const headerText = flattenText(view);
 
-    expect(flattenText(marker?.props.children)).toContain('Daily meal');
-    expect(flattenText(marker?.props.children)).toContain('1h 30m–2h 00m');
-    expect(flattenText(readout?.props.children)).toContain('Now: Daily meal is underway');
-    expect(flattenText(readout?.props.children)).toContain('Most recent: One-Off meal finished at 1h 00m');
-    expect(flattenText(readout?.props.children)).toContain('Next: Daily meal starts at 3h 00m');
+    expect(titleRow?.props.children).toBeDefined();
+    expect(flattenText(titleRow?.props.children)).toContain('Metabolic Simulator');
+    expect(viewerControls?.props.children).toBeDefined();
+    expect(flattenText(viewerControls?.props.children)).toContain('Plain labels');
+    expect(flattenText(viewerControls?.props.children)).toContain('Dark mode');
+    expect(headerText).not.toContain('Sim Bar');
+    expect(headerText).not.toContain('Viewer Bar');
+    expect(headerText).not.toContain('Pause');
+    expect(headerText).not.toContain('Reset');
   });
 });

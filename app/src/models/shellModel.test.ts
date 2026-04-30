@@ -137,11 +137,13 @@ function createStubShellStateHost() {
   let snapshot: {
     workspace: 'body-status' | 'event-planner';
     selectedSystemId: 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
+    enabledSubsystemIds: string[];
     theme: 'light' | 'dark';
     isPlaying: boolean;
   } = {
     workspace: 'body-status',
     selectedSystemId: 'whole-body',
+    enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'venous-return', 'storage-signal'],
     theme: 'light',
     isPlaying: false,
   };
@@ -167,6 +169,15 @@ function createStubShellStateHost() {
       snapshot = { ...snapshot, selectedSystemId };
       emit();
     },
+    toggleSubsystem(subsystemId: string) {
+      snapshot = {
+        ...snapshot,
+        enabledSubsystemIds: snapshot.enabledSubsystemIds.includes(subsystemId)
+          ? snapshot.enabledSubsystemIds.filter((enabledSubsystemId) => enabledSubsystemId !== subsystemId)
+          : [...snapshot.enabledSubsystemIds, subsystemId],
+      };
+      emit();
+    },
     setTheme(theme: 'light' | 'dark') {
       snapshot = { ...snapshot, theme };
       emit();
@@ -189,6 +200,11 @@ describe('createShellModel', () => {
     expect(snapshot.runName).toBe('Lunch Replay');
     expect(snapshot.workspace.value).toBe('body-status');
     expect(snapshot.systems.find((system) => system.id === 'whole-body')?.isSelected).toBe(true);
+    expect(snapshot.subsystems).toEqual([
+      expect.objectContaining({ label: 'Blood System', isEnabled: true }),
+      expect.objectContaining({ label: 'Digestive System', isEnabled: true }),
+      expect.objectContaining({ label: 'Lymph System', isEnabled: true }),
+    ]);
     expect(snapshot.bands.header.viewerStatus).toBe('Viewing Whole Body');
     expect(snapshot.bands.footer.isPlaying).toBe(false);
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([

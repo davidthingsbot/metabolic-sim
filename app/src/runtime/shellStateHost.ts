@@ -4,6 +4,7 @@ import type { SystemId, Workspace } from '../models/shellSnapshot';
 export interface ShellStateSnapshot {
   workspace: Workspace;
   selectedSystemId: SystemId;
+  enabledSubsystemIds: string[];
   theme: Theme;
   isPlaying: boolean;
 }
@@ -13,6 +14,7 @@ export interface ShellStateHost {
   subscribe(listener: () => void): () => void;
   setWorkspace(workspace: Workspace): void;
   selectSystem(systemId: SystemId): void;
+  toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
   setPlaying(isPlaying: boolean): void;
 }
@@ -27,6 +29,20 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
   let snapshot: ShellStateSnapshot = {
     workspace: options.initialWorkspace ?? 'body-status',
     selectedSystemId: options.initialSelectedSystemId ?? 'whole-body',
+    enabledSubsystemIds: [
+      'blood-system',
+      'digestive-system',
+      'lymph-system',
+      'arterial-flow',
+      'venous-return',
+      'storage-signal',
+      'stomach-processing',
+      'gut-absorption',
+      'liver-hand-off',
+      'lymph-return',
+      'tissue-drainage',
+      'gut-lacteals',
+    ],
     theme: options.initialTheme,
     isPlaying: false,
   };
@@ -52,6 +68,16 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
     },
     selectSystem(selectedSystemId) {
       snapshot = { ...snapshot, selectedSystemId };
+      emit();
+    },
+    toggleSubsystem(subsystemId) {
+      const isEnabled = snapshot.enabledSubsystemIds.includes(subsystemId);
+      snapshot = {
+        ...snapshot,
+        enabledSubsystemIds: isEnabled
+          ? snapshot.enabledSubsystemIds.filter((enabledSubsystemId) => enabledSubsystemId !== subsystemId)
+          : [...snapshot.enabledSubsystemIds, subsystemId],
+      };
       emit();
     },
     setTheme(theme) {

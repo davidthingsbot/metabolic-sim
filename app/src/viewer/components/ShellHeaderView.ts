@@ -7,29 +7,19 @@ export interface ShellHeaderViewProps {
 }
 
 export const ShellHeaderView: FunctionalComponent<ShellHeaderViewProps> = ({ snapshot, onToggleTheme }) =>
-  h('div', null, [
-    h('div', { class: 'header-title-group' }, [
-      h('p', { class: 'eyebrow' }, snapshot.bands.header.eyebrow),
-      h('h1', null, snapshot.runName),
-      h('p', { class: 'header-status' }, snapshot.bands.header.highLevelStatus),
+  h('div', { class: 'header-top-row' }, [
+    h('div', { class: 'header-brand' }, [
+      h('img', {
+        class: 'header-brand-icon',
+        src: '/metabolic-sim-icon.png',
+        width: 48,
+        height: 48,
+        alt: 'Metabolic Simulator icon',
+      }),
+      h('h1', null, snapshot.bands.header.eyebrow),
     ]),
-    h('div', { class: 'header-controls' }, [
-      h('div', { class: 'control-cluster', 'aria-label': 'Sim Bar' }, [
-        h('span', { class: 'control-label' }, 'Sim Bar'),
-        h('div', { class: 'chip-row' }, [
-          h('span', { class: 'control-chip active' }, snapshot.bands.header.runChipLabel),
-          h('button', { class: 'control-chip', type: 'button' }, 'Pause'),
-          h('button', { class: 'control-chip', type: 'button' }, 'Reset'),
-          h('button', { class: 'control-chip', type: 'button' }, '1×'),
-        ]),
-      ]),
-      h('div', { class: 'control-cluster', 'aria-label': 'Viewer Bar' }, [
-        h('span', { class: 'control-label' }, 'Viewer Bar'),
-        h('div', { class: 'chip-row' }, [
-          h('span', { class: 'control-chip active' }, snapshot.bands.header.viewerStatus),
-          h('button', { class: 'control-chip', type: 'button' }, 'Plain labels'),
-          h('button', { class: 'theme-toggle', type: 'button', onClick: onToggleTheme }, snapshot.bands.header.themeToggleLabel),
-        ]),
-      ]),
+    h('div', { class: 'header-viewer-controls' }, [
+      h('button', { class: 'control-chip', type: 'button' }, 'Plain labels'),
+      h('button', { class: 'theme-toggle', type: 'button', onClick: onToggleTheme }, snapshot.bands.header.themeToggleLabel),
     ]),
   ]);

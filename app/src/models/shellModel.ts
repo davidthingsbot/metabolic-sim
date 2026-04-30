@@ -9,6 +9,7 @@ export interface ShellModel {
   subscribe(listener: () => void): () => void;
   setWorkspace(workspace: Workspace): void;
   selectSystem(systemId: SystemId): void;
+  toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
   setPlaying(isPlaying: boolean): void;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
@@ -50,6 +51,7 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
         run: sessionSnapshot.activeRun,
         workspace: shellStateSnapshot.workspace,
         selectedSystemId: shellStateSnapshot.selectedSystemId,
+        enabledSubsystemIds: shellStateSnapshot.enabledSubsystemIds,
         theme: shellStateSnapshot.theme,
         isPlaying: shellStateSnapshot.isPlaying,
       });
@@ -63,6 +65,9 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     selectSystem(systemId) {
       options.shellStateHost.selectSystem(systemId);
+    },
+    toggleSubsystem(subsystemId) {
+      options.shellStateHost.toggleSubsystem(subsystemId);
     },
     setTheme(nextTheme) {
       options.shellStateHost.setTheme(nextTheme);

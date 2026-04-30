@@ -40,6 +40,7 @@ describe('createShellSnapshot', () => {
       run,
       workspace: 'body-status',
       selectedSystemId: 'blood-system',
+      enabledSubsystemIds: ['arterial-flow', 'storage-signal'],
       theme: 'light',
       isPlaying: false,
     });
@@ -48,6 +49,11 @@ describe('createShellSnapshot', () => {
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 6.2 g');
     expect(snapshot.bands.header.highLevelStatus).toContain('signal 18.0 µU/mL');
     expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(true);
+    expect(snapshot.subsystems).toEqual([
+      expect.objectContaining({ label: 'Arterial flow', isEnabled: true }),
+      expect.objectContaining({ label: 'Venous return', isEnabled: false }),
+      expect.objectContaining({ label: 'Storage signal', isEnabled: true }),
+    ]);
     expect(snapshot.bands.midsection.copy).toContain('Live simulation results');
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
       'Current trajectory',
@@ -105,11 +111,13 @@ describe('createShellSnapshot', () => {
       run,
       workspace: 'event-planner',
       selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system'],
       theme: 'dark',
       isPlaying: false,
     });
 
     expect(snapshot.workspace.label).toBe('Event Planner');
+    expect(snapshot.subsystems).toEqual([]);
     expect(snapshot.bands.header.themeToggleLabel).toBe('Light mode');
     expect(snapshot.theme).toBe('dark');
     expect(snapshot.bands.footer.maxPlaybackTime).toBe(1);
@@ -175,6 +183,7 @@ describe('createShellSnapshot', () => {
       run,
       workspace: 'body-status',
       selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system'],
       theme: 'light',
       isPlaying: false,
     });
@@ -235,6 +244,7 @@ describe('createShellSnapshot', () => {
       run,
       workspace: 'body-status',
       selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system'],
       theme: 'light',
       isPlaying: true,
     });

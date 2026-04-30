@@ -10,6 +10,13 @@ export interface ShellSystemItem {
   isSelected: boolean;
 }
 
+export interface ShellSubsystemItem {
+  id: string;
+  label: string;
+  caption: string;
+  isEnabled: boolean;
+}
+
 export interface ShellDetailCard {
   title: string;
   body: string;
@@ -88,6 +95,7 @@ export interface ShellSnapshot {
     mealOptions: ShellPlannerMealOption[];
   };
   systems: ShellSystemItem[];
+  subsystems: ShellSubsystemItem[];
   bands: {
     header: {
       eyebrow: string;
@@ -125,6 +133,7 @@ export interface CreateShellSnapshotOptions {
   run: Run;
   workspace: Workspace;
   selectedSystemId: SystemId;
+  enabledSubsystemIds: string[];
   theme: 'light' | 'dark';
   isPlaying: boolean;
 }
@@ -135,6 +144,29 @@ const SYSTEMS: Array<{ id: SystemId; label: string; caption: string }> = [
   { id: 'digestive-system', label: 'Digestive System', caption: 'Input' },
   { id: 'lymph-system', label: 'Lymph System', caption: 'Return flow' },
 ];
+
+const SUBSYSTEMS_BY_SYSTEM: Record<SystemId, Array<{ id: string; label: string; caption: string }>> = {
+  'whole-body': [
+    { id: 'blood-system', label: 'Blood System', caption: 'Transport' },
+    { id: 'digestive-system', label: 'Digestive System', caption: 'Input' },
+    { id: 'lymph-system', label: 'Lymph System', caption: 'Return flow' },
+  ],
+  'blood-system': [
+    { id: 'arterial-flow', label: 'Arterial flow', caption: 'Outbound circulation' },
+    { id: 'venous-return', label: 'Venous return', caption: 'Inbound circulation' },
+    { id: 'storage-signal', label: 'Storage signal', caption: 'Hormone response' },
+  ],
+  'digestive-system': [
+    { id: 'stomach-processing', label: 'Stomach processing', caption: 'Meal breakdown' },
+    { id: 'gut-absorption', label: 'Gut absorption', caption: 'Sugar uptake' },
+    { id: 'liver-hand-off', label: 'Liver hand-off', caption: 'First-pass handling' },
+  ],
+  'lymph-system': [
+    { id: 'lymph-return', label: 'Lymph return', caption: 'Fluid return' },
+    { id: 'tissue-drainage', label: 'Tissue drainage', caption: 'Interstitial pickup' },
+    { id: 'gut-lacteals', label: 'Gut lacteals', caption: 'Fat transport later' },
+  ],
+};
 
 const WORKSPACE_OPTIONS: Array<{ value: Workspace; label: string }> = [
   { value: 'body-status', label: 'Body Status' },
@@ -556,6 +588,14 @@ function createPlannerMealOptions(run: Run): ShellPlannerMealOption[] {
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
+function createSubsystemItems(selectedSystemId: SystemId, enabledSubsystemIds: string[]): ShellSubsystemItem[] {
+  const enabledSubsystemIdSet = new Set(enabledSubsystemIds);
+  return (SUBSYSTEMS_BY_SYSTEM[selectedSystemId] ?? []).map((subsystem) => ({
+    ...subsystem,
+    isEnabled: enabledSubsystemIdSet.has(subsystem.id),
+  }));
+}
+
 export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
   const state = options.run.individuals[0]?.state;
   const bloodSugar = state?.substances.glucose.blood ?? 0;
@@ -589,6 +629,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
       ...system,
       isSelected: system.id === selectedSystem.id,
     })),
+    subsystems: options.workspace === 'body-status' ? createSubsystemItems(selectedSystem.id, options.enabledSubsystemIds) : [],
     bands: {
       header: {
         eyebrow: 'Metabolic Simulator',

@@ -10,6 +10,7 @@ export interface ShellViewProps {
   snapshot: ShellSnapshot;
   onSelectWorkspace: (workspace: Workspace) => void;
   onSelectSystem: (systemId: SystemId) => void;
+  onToggleSubsystem: (subsystemId: string) => void;
   onCreateMealActivity: (input: CreateScheduledMealActivityInput) => void;
   onUpdateMealActivity: (activityId: string, input: UpdateScheduledMealActivityInput) => void;
   onRemoveScheduledActivity: (activityId: string) => void;
@@ -24,6 +25,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   snapshot,
   onSelectWorkspace,
   onSelectSystem,
+  onToggleSubsystem,
   onCreateMealActivity,
   onUpdateMealActivity,
   onRemoveScheduledActivity,
@@ -46,6 +48,7 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
         snapshot,
         onSelectWorkspace,
         onSelectSystem,
+        onToggleSubsystem,
         onCreateMealActivity,
         onUpdateMealActivity,
         onRemoveScheduledActivity,

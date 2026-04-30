@@ -30,6 +30,7 @@ export interface ShellMidsectionViewProps {
   snapshot: ShellSnapshot;
   onSelectWorkspace: (workspace: Workspace) => void;
   onSelectSystem: (systemId: SystemId) => void;
+  onToggleSubsystem: (subsystemId: string) => void;
   onCreateMealActivity: (input: CreateScheduledMealActivityInput) => void;
   onUpdateMealActivity: (activityId: string, input: UpdateScheduledMealActivityInput) => void;
   onRemoveScheduledActivity: (activityId: string) => void;
@@ -39,6 +40,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
   snapshot,
   onSelectWorkspace,
   onSelectSystem,
+  onToggleSubsystem,
   onCreateMealActivity,
   onUpdateMealActivity,
   onRemoveScheduledActivity,
@@ -132,21 +134,40 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
           ),
         ),
       ]),
-      h('div', { class: 'systems-list' }, [
-        h('span', { class: 'control-label' }, 'Systems'),
-        ...snapshot.systems.map((system) =>
-          h(
-            'button',
-            {
-              key: system.id,
-              class: system.isSelected ? 'system-chip active' : 'system-chip',
-              type: 'button',
-              onClick: () => onSelectSystem(system.id),
-            },
-            [h('strong', null, system.label), h('span', null, system.caption)],
-          ),
-        ),
-      ]),
+      snapshot.workspace.value === 'body-status'
+        ? h('div', { class: 'systems-list' }, [
+            h('span', { class: 'control-label' }, 'Systems'),
+            ...snapshot.systems.map((system) =>
+              h(
+                'button',
+                {
+                  key: system.id,
+                  class: system.isSelected ? 'system-chip active' : 'system-chip',
+                  type: 'button',
+                  onClick: () => onSelectSystem(system.id),
+                },
+                [h('strong', null, system.label), h('span', null, system.caption)],
+              ),
+            ),
+          ])
+        : null,
+      snapshot.workspace.value === 'body-status'
+        ? h('div', { class: 'subsystems-list' }, [
+            h('span', { class: 'control-label' }, 'Subsystems'),
+            ...snapshot.subsystems.map((subsystem) =>
+              h(
+                'button',
+                {
+                  key: subsystem.id,
+                  class: subsystem.isEnabled ? 'system-chip active' : 'system-chip',
+                  type: 'button',
+                  onClick: () => onToggleSubsystem(subsystem.id),
+                },
+                [h('strong', null, subsystem.label), h('span', null, subsystem.caption)],
+              ),
+            ),
+          ])
+        : null,
     ]),
     end: h('section', { class: 'detail-field' }, [
       h('div', { class: 'detail-heading' }, [
