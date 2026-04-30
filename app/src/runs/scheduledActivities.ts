@@ -1,13 +1,51 @@
-import type { ScheduledActivity, ScheduledMealActivity } from './types';
+import type { RepeatingCycleScheduleLane, ScheduleLane, ScheduledActivity, ScheduledMealActivity } from './types';
 
-function activityEndPlaybackTime(activity: ScheduledActivity): number {
-  return activity.startPlaybackTime + activity.durationMinutes * 60;
+function hasStartPlaybackTime(activity: ScheduledActivity): activity is ScheduledMealActivity & { startPlaybackTime: number } {
+  return 'startPlaybackTime' in activity;
 }
 
-function calculateOverlapSeconds(activity: ScheduledActivity, windowStartPlaybackTime: number, windowEndPlaybackTime: number): number {
-  const overlapStart = Math.max(windowStartPlaybackTime, activity.startPlaybackTime);
-  const overlapEnd = Math.min(windowEndPlaybackTime, activityEndPlaybackTime(activity));
+function activityDurationSeconds(activity: ScheduledActivity): number {
+  return activity.durationMinutes * 60;
+}
+
+function calculateOverlapSeconds(activityStartPlaybackTime: number, activityDuration: number, windowStartPlaybackTime: number, windowEndPlaybackTime: number): number {
+  const overlapStart = Math.max(windowStartPlaybackTime, activityStartPlaybackTime);
+  const overlapEnd = Math.min(windowEndPlaybackTime, activityStartPlaybackTime + activityDuration);
   return Math.max(overlapEnd - overlapStart, 0);
+}
+
+function calculateOneOffOverlapSeconds(
+  activity: ScheduledMealActivity & { startPlaybackTime: number },
+  windowStartPlaybackTime: number,
+  windowEndPlaybackTime: number,
+): number {
+  return calculateOverlapSeconds(activity.startPlaybackTime, activityDurationSeconds(activity), windowStartPlaybackTime, windowEndPlaybackTime);
+}
+
+function calculateRepeatingOverlapSeconds(
+  activity: ScheduledMealActivity & { startCycleMinute: number },
+  lane: RepeatingCycleScheduleLane,
+  windowStartPlaybackTime: number,
+  windowEndPlaybackTime: number,
+): number {
+  const cycleDurationSeconds = lane.cycleDurationMinutes * 60;
+  const activityStartOffsetSeconds = activity.startCycleMinute * 60;
+  const durationSeconds = activityDurationSeconds(activity);
+  const firstCycleIndex = Math.max(Math.floor((windowStartPlaybackTime - activityStartOffsetSeconds) / cycleDurationSeconds) - 1, 0);
+  const lastCycleIndex = Math.max(Math.floor((windowEndPlaybackTime - activityStartOffsetSeconds) / cycleDurationSeconds) + 1, 0);
+  let overlapSeconds = 0;
+
+  for (let cycleIndex = firstCycleIndex; cycleIndex <= lastCycleIndex; cycleIndex += 1) {
+    const occurrenceStartPlaybackTime = cycleIndex * cycleDurationSeconds + activityStartOffsetSeconds;
+    overlapSeconds += calculateOverlapSeconds(
+      occurrenceStartPlaybackTime,
+      durationSeconds,
+      windowStartPlaybackTime,
+      windowEndPlaybackTime,
+    );
+  }
+
+  return overlapSeconds;
 }
 
 export function getScheduledMealActivities(activities: ScheduledActivity[]): ScheduledMealActivity[] {
@@ -16,16 +54,26 @@ export function getScheduledMealActivities(activities: ScheduledActivity[]): Sch
 
 export function getMealCarbsForPlaybackWindow(
   activity: ScheduledMealActivity,
+  lane: ScheduleLane,
   windowStartPlaybackTime: number,
   windowDurationSeconds: number,
 ): number {
   const windowEndPlaybackTime = windowStartPlaybackTime + windowDurationSeconds;
-  const overlapSeconds = calculateOverlapSeconds(activity, windowStartPlaybackTime, windowEndPlaybackTime);
-  const activityDurationSeconds = activity.durationMinutes * 60;
+  const durationSeconds = activityDurationSeconds(activity);
 
-  if (activityDurationSeconds <= 0 || overlapSeconds <= 0) {
+  if (durationSeconds <= 0) {
     return 0;
   }
 
-  return (activity.carbsGrams * overlapSeconds) / activityDurationSeconds;
+  const overlapSeconds = hasStartPlaybackTime(activity)
+    ? calculateOneOffOverlapSeconds(activity, windowStartPlaybackTime, windowEndPlaybackTime)
+    : lane.kind === 'repeating-cycle'
+      ? calculateRepeatingOverlapSeconds(activity, lane, windowStartPlaybackTime, windowEndPlaybackTime)
+      : 0;
+
+  if (overlapSeconds <= 0) {
+    return 0;
+  }
+
+  return (activity.carbsGrams * overlapSeconds) / durationSeconds;
 }

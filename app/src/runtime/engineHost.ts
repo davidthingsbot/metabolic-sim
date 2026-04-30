@@ -60,6 +60,7 @@ function restoreCheckpoint(run: Run, playbackTime: number): boolean {
 
 function applyScheduledActivitiesForPlaybackWindow(run: Run, playbackTime: number, stepSeconds: number): void {
   const mealActivities = getScheduledMealActivities(run.scheduledActivities);
+  const laneById = new Map(run.scheduleLanes.map((lane) => [lane.id, lane]));
 
   if (!mealActivities.length) {
     return;
@@ -67,7 +68,12 @@ function applyScheduledActivitiesForPlaybackWindow(run: Run, playbackTime: numbe
 
   run.individuals.forEach((individual) => {
     mealActivities.forEach((activity) => {
-      const carbsGrams = getMealCarbsForPlaybackWindow(activity, playbackTime, stepSeconds);
+      const lane = laneById.get(activity.laneId);
+      if (!lane) {
+        return;
+      }
+
+      const carbsGrams = getMealCarbsForPlaybackWindow(activity, lane, playbackTime, stepSeconds);
       if (carbsGrams > 0) {
         applyEvent(individual.state, { type: 'meal', carbsGrams });
       }

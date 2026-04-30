@@ -32,6 +32,31 @@ describe('createShellSnapshot', () => {
 
   it('switches the detail placeholders for the event-planner workspace', () => {
     const run = createSampleRun();
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const repeatingLane = run.scheduleLanes.find((lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 1440);
+
+    if (!oneOffLane || !repeatingLane) {
+      throw new Error('Expected one-off and repeating lanes');
+    }
+
+    run.scheduledActivities = [
+      {
+        id: 'one-off-meal',
+        laneId: oneOffLane.id,
+        type: 'meal',
+        startPlaybackTime: 21600,
+        durationMinutes: 45,
+        carbsGrams: 30,
+      },
+      {
+        id: 'daily-meal',
+        laneId: repeatingLane.id,
+        type: 'meal',
+        startCycleMinute: 90,
+        durationMinutes: 30,
+        carbsGrams: 45,
+      },
+    ];
     run.history.checkpoints.push({
       playbackTime: 172800,
       individuals: structuredClone(run.individuals),
@@ -52,9 +77,16 @@ describe('createShellSnapshot', () => {
     expect(snapshot.bands.footer.selectedCheckpointIndex).toBe(0);
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
       'Planner timeline',
-      'Selected lane',
+      'Lane summary · One-Off',
+      'Lane summary · Daily',
+      'Lane summary · Alternating Days',
+      'Lane summary · Weekly',
       'Next planner actions',
     ]);
+    expect(snapshot.bands.midsection.detailCards[1].body).toContain('One-off lane');
+    expect(snapshot.bands.midsection.detailCards[1].body).toContain('1 scheduled meal');
+    expect(snapshot.bands.midsection.detailCards[2].body).toContain('Repeats every 1d 0h');
+    expect(snapshot.bands.midsection.detailCards[2].body).toContain('1 scheduled meal');
   });
 
   it('exposes recorded history details in the footer scrubber status', () => {

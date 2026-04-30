@@ -18,13 +18,29 @@ describe('createRun', () => {
     ]);
   });
 
-  it('starts with a daily, alternating-days, and weekly schedule lane', () => {
+  it('starts with one one-off lane plus repeating daily, alternating-days, and weekly lanes', () => {
     const run = createRun({ name: 'Schedule Test' });
 
-    expect(run.scheduleLanes.map((lane) => lane.kind)).toEqual([
-      'daily',
-      'alternating-days',
-      'weekly',
+    expect(run.scheduleLanes).toEqual([
+      expect.objectContaining({
+        kind: 'one-off',
+        name: 'One-Off',
+      }),
+      expect.objectContaining({
+        kind: 'repeating-cycle',
+        name: 'Daily',
+        cycleDurationMinutes: 1440,
+      }),
+      expect.objectContaining({
+        kind: 'repeating-cycle',
+        name: 'Alternating Days',
+        cycleDurationMinutes: 2880,
+      }),
+      expect.objectContaining({
+        kind: 'repeating-cycle',
+        name: 'Weekly',
+        cycleDurationMinutes: 10080,
+      }),
     ]);
   });
 
@@ -35,7 +51,7 @@ describe('createRun', () => {
     expect(run.individuals[0].name).toBe('Body 1');
   });
 
-  it('can seed a new run with a scheduled meal activity so first playback steps are visibly meaningful', () => {
+  it('can seed a new run with a repeating scheduled meal activity so first playback steps are visibly meaningful', () => {
     const run = createRun({
       name: 'Seeded Run',
       initialMeal: {
@@ -49,7 +65,7 @@ describe('createRun', () => {
     expect(run.scheduledActivities).toEqual([
       expect.objectContaining({
         type: 'meal',
-        startPlaybackTime: 0,
+        startCycleMinute: 0,
         durationMinutes: 30,
         carbsGrams: 50,
       }),
@@ -78,5 +94,57 @@ describe('createRun', () => {
       },
     ]);
     expect(normalizedRun.scheduledActivities).toEqual([]);
+  });
+
+  it('backfills legacy lanes and legacy activity placement into the cycle-lane model', () => {
+    const run = createRun({ name: 'Legacy Schedule Run' });
+    const legacyRun = {
+      ...run,
+      scheduleLanes: [
+        { id: 'lane-daily', kind: 'daily', name: 'Daily' },
+        { id: 'lane-weekly', kind: 'weekly', name: 'Weekly' },
+      ],
+      scheduledActivities: [
+        {
+          id: 'meal-1',
+          laneId: 'lane-daily',
+          type: 'meal',
+          startPlaybackTime: 5400,
+          durationMinutes: 30,
+          carbsGrams: 45,
+        },
+        {
+          id: 'meal-2',
+          laneId: 'missing-lane',
+          type: 'meal',
+          startPlaybackTime: 7200,
+          durationMinutes: 20,
+          carbsGrams: 20,
+        },
+      ],
+    } as unknown as typeof run;
+
+    const normalizedRun = ensureRunHistory(legacyRun);
+
+    expect(normalizedRun.scheduleLanes).toEqual([
+      expect.objectContaining({ id: 'lane-daily', kind: 'repeating-cycle', cycleDurationMinutes: 1440 }),
+      expect.objectContaining({ id: 'lane-weekly', kind: 'repeating-cycle', cycleDurationMinutes: 10080 }),
+      expect.objectContaining({ kind: 'one-off', name: 'One-Off' }),
+    ]);
+    expect(normalizedRun.scheduledActivities).toEqual([
+      expect.objectContaining({
+        id: 'meal-1',
+        laneId: 'lane-daily',
+        startCycleMinute: 90,
+        durationMinutes: 30,
+        carbsGrams: 45,
+      }),
+      expect.objectContaining({
+        id: 'meal-2',
+        startPlaybackTime: 7200,
+        durationMinutes: 20,
+        carbsGrams: 20,
+      }),
+    ]);
   });
 });

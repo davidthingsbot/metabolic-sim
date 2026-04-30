@@ -195,11 +195,15 @@ describe('createShellModel', () => {
     expect(snapshot.systems.find((system) => system.id === 'blood-system')?.isSelected).toBe(true);
     expect(snapshot.bands.midsection.detailCards.map((card) => card.title)).toEqual([
       'Planner timeline',
-      'Selected lane',
+      'Lane summary · One-Off',
+      'Lane summary · Daily',
+      'Lane summary · Alternating Days',
+      'Lane summary · Weekly',
       'Next planner actions',
     ]);
     expect(snapshot.bands.midsection.detailCards[0].body).toContain('1 scheduled meal');
-    expect(snapshot.bands.midsection.detailCards[1].body).toContain('45.0 g carbs over 30 min');
+    expect(snapshot.bands.midsection.detailCards[2].body).toContain('Repeats every 1d 0h');
+    expect(snapshot.bands.midsection.detailCards[2].body).toContain('45.0 g carbs');
     expect(snapshot.bands.footer.playbackTime).toBe(5700);
     expect(snapshot.bands.footer.scrubberStatus).toContain('2 checkpoints');
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 8.5 g');

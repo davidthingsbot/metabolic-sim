@@ -1,12 +1,28 @@
 import type { State } from '../engine/state';
 
-export type ScheduleLaneKind = 'daily' | 'alternating-days' | 'weekly';
+export type LegacyScheduleLaneKind = 'daily' | 'alternating-days' | 'weekly';
+export type ScheduleLaneKind = 'one-off' | 'repeating-cycle' | LegacyScheduleLaneKind;
 
-export interface ScheduleLane {
+export interface OneOffScheduleLane {
   id: string;
-  kind: ScheduleLaneKind;
+  kind: 'one-off';
   name: string;
 }
+
+export interface RepeatingCycleScheduleLane {
+  id: string;
+  kind: 'repeating-cycle';
+  name: string;
+  cycleDurationMinutes: number;
+}
+
+export interface LegacyScheduleLane {
+  id: string;
+  kind: LegacyScheduleLaneKind;
+  name: string;
+}
+
+export type ScheduleLane = OneOffScheduleLane | RepeatingCycleScheduleLane | LegacyScheduleLane;
 
 export interface IndividualRunState {
   id: string;
@@ -32,14 +48,25 @@ export interface RunLineage {
 export interface ScheduledActivityBase {
   id: string;
   laneId: string;
-  startPlaybackTime: number;
   durationMinutes: number;
 }
 
-export interface ScheduledMealActivity extends ScheduledActivityBase {
+export interface OneOffScheduledActivityPlacement {
+  startPlaybackTime: number;
+}
+
+export interface RepeatingScheduledActivityPlacement {
+  startCycleMinute: number;
+}
+
+export interface ScheduledMealActivityBase extends ScheduledActivityBase {
   type: 'meal';
   carbsGrams: number;
 }
+
+export type ScheduledMealActivity =
+  | (ScheduledMealActivityBase & OneOffScheduledActivityPlacement)
+  | (ScheduledMealActivityBase & RepeatingScheduledActivityPlacement);
 
 export type ScheduledActivity = ScheduledMealActivity;
 

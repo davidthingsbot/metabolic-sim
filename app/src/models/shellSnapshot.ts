@@ -1,4 +1,4 @@
-import type { Run } from '../runs/types';
+import type { Run, ScheduleLane, ScheduledMealActivity } from '../runs/types';
 
 export type Workspace = 'body-status' | 'event-planner';
 export type SystemId = 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
@@ -80,6 +80,19 @@ function formatHours(seconds: number): string {
   return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
 }
 
+function formatCycleDurationMinutes(cycleDurationMinutes: number): string {
+  const days = Math.floor(cycleDurationMinutes / 1440);
+  const remainingMinutes = cycleDurationMinutes % 1440;
+  const hours = Math.floor(remainingMinutes / 60);
+  const minutes = remainingMinutes % 60;
+
+  if (minutes === 0) {
+    return `${days}d ${hours}h`;
+  }
+
+  return `${days}d ${hours}h ${minutes}m`;
+}
+
 function createScrubberStatus(run: Run): string {
   const checkpointTimes = run.history.checkpoints.map((checkpoint) => checkpoint.playbackTime);
   const firstCheckpointTime = checkpointTimes[0] ?? run.activePlaybackTime;
@@ -118,23 +131,44 @@ function createBodyStatusCards(systemLabel: string, run: Run): ShellDetailCard[]
   ];
 }
 
-function createPlannerCards(run: Run): ShellDetailCard[] {
-  const laneNames = run.scheduleLanes.map((lane) => lane.name).join(' · ');
-  const mealActivities = run.scheduledActivities.filter((activity) => activity.type === 'meal');
-  const selectedMeal = mealActivities[0];
+function describeLaneSummary(lane: ScheduleLane, mealActivities: ScheduledMealActivity[]): string {
   const mealCountLabel = `${mealActivities.length} scheduled meal${mealActivities.length === 1 ? '' : 's'}`;
+
+  if (lane.kind === 'repeating-cycle') {
+    return `Repeats every ${formatCycleDurationMinutes(lane.cycleDurationMinutes)} · ${mealCountLabel}.`;
+  }
+
+  return `One-off lane · ${mealCountLabel}.`;
+}
+
+function describeMealPlacement(activity: ScheduledMealActivity): string {
+  if ('startPlaybackTime' in activity) {
+    return `First meal starts at ${formatHours(activity.startPlaybackTime)}`;
+  }
+
+  return `First meal lands at cycle minute ${activity.startCycleMinute}`;
+}
+
+function createPlannerCards(run: Run): ShellDetailCard[] {
+  const mealActivities = run.scheduledActivities.filter((activity): activity is ScheduledMealActivity => activity.type === 'meal');
+  const laneCards = run.scheduleLanes.map((lane) => {
+    const laneMealActivities = mealActivities.filter((activity) => activity.laneId === lane.id);
+    const firstLaneMeal = laneMealActivities[0];
+
+    return {
+      title: `Lane summary · ${lane.name}`,
+      body: firstLaneMeal
+        ? `${describeLaneSummary(lane, laneMealActivities)} ${describeMealPlacement(firstLaneMeal)} and runs for ${firstLaneMeal.durationMinutes} min at ${firstLaneMeal.carbsGrams.toFixed(1)} g carbs.`
+        : `${describeLaneSummary(lane, laneMealActivities)} No meals scheduled yet.`,
+    };
+  });
 
   return [
     {
       title: 'Planner timeline',
-      body: `Planner tracks ${mealCountLabel} across ${run.scheduleLanes.length} repeating lanes: ${laneNames}.`,
+      body: `Planner tracks ${mealActivities.length} scheduled meal${mealActivities.length === 1 ? '' : 's'} across ${run.scheduleLanes.length} lanes without expanding repeating cycles into concrete copies.`,
     },
-    {
-      title: 'Selected lane',
-      body: selectedMeal
-        ? `Meal starts at ${formatHours(selectedMeal.startPlaybackTime)}, runs for ${selectedMeal.durationMinutes} min, and contributes ${selectedMeal.carbsGrams.toFixed(1)} g carbs over ${selectedMeal.durationMinutes} min.`
-        : 'No meal scheduled yet. Direct grid editing and event forms land next; this slice wires one duration-based meal through the same persisted run timeline.',
-    },
+    ...laneCards,
     {
       title: 'Next planner actions',
       body: 'Add meals, movement, and sleep events here, then replay them through the same timeline scrubber in the footer.',
@@ -148,6 +182,8 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
   const insulin = state?.hormones.insulin ?? 0;
   const selectedSystem = SYSTEMS.find((system) => system.id === options.selectedSystemId) ?? SYSTEMS[0];
   const workspaceLabel = options.workspace === 'body-status' ? 'Body Status' : 'Event Planner';
+  const oneOffLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'one-off').length;
+  const repeatingLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'repeating-cycle').length;
 
   return {
     runName: options.run.name,
@@ -171,7 +207,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         viewerStatus:
           options.workspace === 'body-status'
             ? `Viewing ${selectedSystem.label}`
-            : `Planning on ${options.run.scheduleLanes.length} recurring lanes`,
+            : `Planning across ${oneOffLaneCount} one-off lane${oneOffLaneCount === 1 ? '' : 's'} and ${repeatingLaneCount} repeating lane${repeatingLaneCount === 1 ? '' : 's'}`,
         runChipLabel: `Run: ${options.run.name}`,
         themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
       },

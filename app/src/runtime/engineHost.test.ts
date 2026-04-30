@@ -214,6 +214,55 @@ describe('createEngineHost', () => {
     });
   });
 
+  it('resolves repeating cycle-lane meal intervals against the current cycle position on each simulated minute', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Cycle Run' });
+    const cycleLane = {
+      id: 'cycle-3-minute-lane',
+      kind: 'repeating-cycle' as const,
+      name: 'Every 3 Minutes',
+      cycleDurationMinutes: 3,
+    };
+    seededRun.scheduleLanes = [
+      seededRun.scheduleLanes.find((lane) => lane.kind === 'one-off') ?? seededRun.scheduleLanes[0],
+      cycleLane,
+    ];
+    seededRun.scheduledActivities = [
+      {
+        id: 'cycle-meal',
+        laneId: cycleLane.id,
+        type: 'meal',
+        startCycleMinute: 1,
+        durationMinutes: 2,
+        carbsGrams: 20,
+      },
+    ];
+
+    const expectedState = structuredClone(seededRun.individuals[0].state);
+    step(expectedState, 60);
+    expectedState.substances.glucose.gut += 10;
+    step(expectedState, 60);
+    expectedState.substances.glucose.gut += 10;
+    step(expectedState, 60);
+    step(expectedState, 60);
+    expectedState.substances.glucose.gut += 10;
+    step(expectedState, 60);
+
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.stepPlayback(300);
+
+    const snapshot = host.getSnapshot();
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
+  });
+
   it('branches the active run from a recorded checkpoint, persists the new run, and switches authority to it', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const sourceRun = createRun({ name: 'Source Run' });
