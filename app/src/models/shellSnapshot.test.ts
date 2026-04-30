@@ -181,4 +181,103 @@ describe('createShellSnapshot', () => {
 
     expect(snapshot.bands.footer.scrubberStatus).toBe('Timeline 1h 30m · 3 checkpoints · Recorded 0h 00m–1h 30m');
   });
+
+  it('projects scheduled meal spans and explanatory event readout into the footer timeline', () => {
+    const run = createSampleRun();
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const dailyLane = run.scheduleLanes.find((lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 1440);
+
+    if (!oneOffLane || !dailyLane || dailyLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and daily lanes');
+    }
+
+    run.activePlaybackTime = 5400;
+    run.scheduledActivities = [
+      {
+        id: 'breakfast',
+        laneId: oneOffLane.id,
+        type: 'meal',
+        startPlaybackTime: 1800,
+        durationMinutes: 30,
+        carbsGrams: 20,
+      },
+      {
+        id: 'lunch',
+        laneId: dailyLane.id,
+        type: 'meal',
+        startCycleMinute: 90,
+        durationMinutes: 30,
+        carbsGrams: 45,
+      },
+      {
+        id: 'snack',
+        laneId: dailyLane.id,
+        type: 'meal',
+        startCycleMinute: 180,
+        durationMinutes: 20,
+        carbsGrams: 15,
+      },
+    ];
+    run.history.checkpoints.push({
+      playbackTime: 1800,
+      individuals: structuredClone(run.individuals),
+    });
+    run.history.checkpoints.push({
+      playbackTime: 5400,
+      individuals: structuredClone(run.individuals),
+    });
+    run.history.checkpoints.push({
+      playbackTime: 10800,
+      individuals: structuredClone(run.individuals),
+    });
+
+    const snapshot = createShellSnapshot({
+      run,
+      workspace: 'body-status',
+      selectedSystemId: 'whole-body',
+      theme: 'light',
+      isPlaying: true,
+    });
+
+    expect(snapshot.bands.footer.mealTimelineEvents).toEqual([
+      {
+        id: 'breakfast-at-1800',
+        label: 'One-Off meal',
+        laneLabel: 'One-Off',
+        startLabel: '0h 30m',
+        endLabel: '1h 00m',
+        summary: '20.0 g carbs over 30 min',
+        status: 'past',
+        offsetPercent: 16.67,
+        widthPercent: 16.67,
+      },
+      {
+        id: 'lunch-at-5400',
+        label: 'Daily meal',
+        laneLabel: 'Daily',
+        startLabel: '1h 30m',
+        endLabel: '2h 00m',
+        summary: '45.0 g carbs over 30 min',
+        status: 'active',
+        offsetPercent: 50,
+        widthPercent: 16.67,
+      },
+      {
+        id: 'snack-at-10800',
+        label: 'Daily meal',
+        laneLabel: 'Daily',
+        startLabel: '3h 00m',
+        endLabel: '3h 20m',
+        summary: '15.0 g carbs over 20 min',
+        status: 'upcoming',
+        offsetPercent: 100,
+        widthPercent: 0,
+      },
+    ]);
+    expect(snapshot.bands.footer.eventReadout).toEqual({
+      current: 'Now: Daily meal is underway · 1h 30m–2h 00m · 45.0 g carbs over 30 min.',
+      mostRecent: 'Most recent: One-Off meal finished at 1h 00m · 20.0 g carbs over 30 min.',
+      next: 'Next: Daily meal starts at 3h 00m · 15.0 g carbs over 20 min.',
+    });
+  });
 });

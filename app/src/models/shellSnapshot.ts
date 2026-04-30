@@ -57,6 +57,24 @@ export interface ShellPlannerMealOption {
   carbsGrams: number;
 }
 
+export interface ShellFooterMealTimelineEvent {
+  id: string;
+  label: string;
+  laneLabel: string;
+  startLabel: string;
+  endLabel: string;
+  summary: string;
+  status: 'past' | 'active' | 'upcoming';
+  offsetPercent: number;
+  widthPercent: number;
+}
+
+export interface ShellFooterEventReadout {
+  current: string;
+  mostRecent: string;
+  next: string;
+}
+
 export interface ShellSnapshot {
   runName: string;
   theme: 'light' | 'dark';
@@ -97,6 +115,8 @@ export interface ShellSnapshot {
       playbackStep: number;
       checkpointTimes: number[];
       selectedCheckpointIndex: number;
+      mealTimelineEvents: ShellFooterMealTimelineEvent[];
+      eventReadout: ShellFooterEventReadout;
     };
   };
 }
@@ -145,6 +165,183 @@ function formatCycleDurationMinutes(cycleDurationMinutes: number): string {
   }
 
   return `${days}d ${hours}h ${minutes}m`;
+}
+
+function formatMealSummary(activity: ScheduledMealActivity): string {
+  return `${activity.carbsGrams.toFixed(1)} g carbs over ${activity.durationMinutes} min`;
+}
+
+function roundPercent(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+interface MealOccurrence {
+  id: string;
+  label: string;
+  laneLabel: string;
+  startPlaybackTime: number;
+  endPlaybackTime: number;
+  summary: string;
+}
+
+function createMealOccurrence(activity: ScheduledMealActivity, lane: ScheduleLane, startPlaybackTime: number): MealOccurrence {
+  return {
+    id: `${activity.id}-at-${startPlaybackTime}`,
+    label: `${lane.name} meal`,
+    laneLabel: lane.name,
+    startPlaybackTime,
+    endPlaybackTime: startPlaybackTime + activity.durationMinutes * 60,
+    summary: formatMealSummary(activity),
+  };
+}
+
+function collectMealOccurrences(run: Run, rangeStartPlaybackTime: number, rangeEndPlaybackTime: number): MealOccurrence[] {
+  const laneById = new Map(run.scheduleLanes.map((lane) => [lane.id, lane]));
+
+  return run.scheduledActivities
+    .filter((activity): activity is ScheduledMealActivity => activity.type === 'meal')
+    .flatMap((activity) => {
+      const lane = laneById.get(activity.laneId);
+
+      if (!lane) {
+        return [];
+      }
+
+      if ('startPlaybackTime' in activity) {
+        const occurrence = createMealOccurrence(activity, lane, activity.startPlaybackTime);
+        return occurrence.endPlaybackTime < rangeStartPlaybackTime || occurrence.startPlaybackTime > rangeEndPlaybackTime ? [] : [occurrence];
+      }
+
+      if (lane.kind !== 'repeating-cycle') {
+        return [];
+      }
+
+      const cycleDurationSeconds = lane.cycleDurationMinutes * 60;
+      const activityStartOffsetSeconds = activity.startCycleMinute * 60;
+      const firstCycleIndex = Math.max(Math.floor((rangeStartPlaybackTime - activityStartOffsetSeconds) / cycleDurationSeconds) - 1, 0);
+      const lastCycleIndex = Math.max(Math.floor((rangeEndPlaybackTime - activityStartOffsetSeconds) / cycleDurationSeconds) + 1, 0);
+      const occurrences: MealOccurrence[] = [];
+
+      for (let cycleIndex = firstCycleIndex; cycleIndex <= lastCycleIndex; cycleIndex += 1) {
+        const occurrence = createMealOccurrence(activity, lane, cycleIndex * cycleDurationSeconds + activityStartOffsetSeconds);
+        if (occurrence.endPlaybackTime < rangeStartPlaybackTime || occurrence.startPlaybackTime > rangeEndPlaybackTime) {
+          continue;
+        }
+        occurrences.push(occurrence);
+      }
+
+      return occurrences;
+    })
+    .sort((left, right) => left.startPlaybackTime - right.startPlaybackTime || left.endPlaybackTime - right.endPlaybackTime || left.id.localeCompare(right.id));
+}
+
+function createFooterMealTimelineEvents(run: Run): ShellFooterMealTimelineEvent[] {
+  const checkpointTimes = run.history.checkpoints.map((checkpoint) => checkpoint.playbackTime).sort((left, right) => left - right);
+  const rangeStartPlaybackTime = checkpointTimes[0] ?? run.activePlaybackTime;
+  const rangeEndPlaybackTime = checkpointTimes[checkpointTimes.length - 1] ?? run.activePlaybackTime;
+  const rangeDurationSeconds = Math.max(rangeEndPlaybackTime - rangeStartPlaybackTime, 1);
+
+  return collectMealOccurrences(run, rangeStartPlaybackTime, rangeEndPlaybackTime).map((occurrence) => {
+    const clampedStartPlaybackTime = Math.min(Math.max(occurrence.startPlaybackTime, rangeStartPlaybackTime), rangeEndPlaybackTime);
+    const clampedEndPlaybackTime = Math.min(Math.max(occurrence.endPlaybackTime, rangeStartPlaybackTime), rangeEndPlaybackTime);
+    const status = run.activePlaybackTime >= occurrence.endPlaybackTime
+      ? 'past'
+      : run.activePlaybackTime < occurrence.startPlaybackTime
+        ? 'upcoming'
+        : 'active';
+
+    return {
+      id: occurrence.id,
+      label: occurrence.label,
+      laneLabel: occurrence.laneLabel,
+      startLabel: formatHours(occurrence.startPlaybackTime),
+      endLabel: formatHours(occurrence.endPlaybackTime),
+      summary: occurrence.summary,
+      status,
+      offsetPercent: roundPercent(((clampedStartPlaybackTime - rangeStartPlaybackTime) / rangeDurationSeconds) * 100),
+      widthPercent: roundPercent(((clampedEndPlaybackTime - clampedStartPlaybackTime) / rangeDurationSeconds) * 100),
+    };
+  });
+}
+
+function createFooterEventReadout(run: Run): ShellFooterEventReadout {
+  const laneById = new Map(run.scheduleLanes.map((lane) => [lane.id, lane]));
+  let currentOccurrence: MealOccurrence | undefined;
+  let mostRecentOccurrence: MealOccurrence | undefined;
+  let nextOccurrence: MealOccurrence | undefined;
+
+  run.scheduledActivities
+    .filter((activity): activity is ScheduledMealActivity => activity.type === 'meal')
+    .forEach((activity) => {
+      const lane = laneById.get(activity.laneId);
+      if (!lane) {
+        return;
+      }
+
+      if ('startPlaybackTime' in activity) {
+        const occurrence = createMealOccurrence(activity, lane, activity.startPlaybackTime);
+        if (run.activePlaybackTime >= occurrence.startPlaybackTime && run.activePlaybackTime < occurrence.endPlaybackTime) {
+          currentOccurrence = !currentOccurrence || occurrence.startPlaybackTime > currentOccurrence.startPlaybackTime ? occurrence : currentOccurrence;
+        }
+        if (occurrence.endPlaybackTime <= run.activePlaybackTime) {
+          mostRecentOccurrence = !mostRecentOccurrence || occurrence.endPlaybackTime > mostRecentOccurrence.endPlaybackTime ? occurrence : mostRecentOccurrence;
+        }
+        if (occurrence.startPlaybackTime > run.activePlaybackTime) {
+          nextOccurrence = !nextOccurrence || occurrence.startPlaybackTime < nextOccurrence.startPlaybackTime ? occurrence : nextOccurrence;
+        }
+        return;
+      }
+
+      if (lane.kind !== 'repeating-cycle') {
+        return;
+      }
+
+      const cycleDurationSeconds = lane.cycleDurationMinutes * 60;
+      const activityStartOffsetSeconds = activity.startCycleMinute * 60;
+      const currentCycleIndex = Math.floor((run.activePlaybackTime - activityStartOffsetSeconds) / cycleDurationSeconds);
+      const currentCycleOccurrence = currentCycleIndex >= 0 ? createMealOccurrence(activity, lane, currentCycleIndex * cycleDurationSeconds + activityStartOffsetSeconds) : undefined;
+
+      if (currentCycleOccurrence && run.activePlaybackTime >= currentCycleOccurrence.startPlaybackTime && run.activePlaybackTime < currentCycleOccurrence.endPlaybackTime) {
+        currentOccurrence = !currentOccurrence || currentCycleOccurrence.startPlaybackTime > currentOccurrence.startPlaybackTime
+          ? currentCycleOccurrence
+          : currentOccurrence;
+      }
+
+      const recentCycleIndex = currentCycleOccurrence && currentCycleOccurrence.endPlaybackTime <= run.activePlaybackTime
+        ? currentCycleIndex
+        : currentCycleIndex - 1;
+      if (recentCycleIndex >= 0) {
+        const recentOccurrence = createMealOccurrence(activity, lane, recentCycleIndex * cycleDurationSeconds + activityStartOffsetSeconds);
+        if (recentOccurrence.endPlaybackTime <= run.activePlaybackTime) {
+          mostRecentOccurrence = !mostRecentOccurrence || recentOccurrence.endPlaybackTime > mostRecentOccurrence.endPlaybackTime
+            ? recentOccurrence
+            : mostRecentOccurrence;
+        }
+      }
+
+      const baseNextCycleIndex = Math.max(currentCycleIndex, 0);
+      const nextStartPlaybackTime = baseNextCycleIndex * cycleDurationSeconds + activityStartOffsetSeconds;
+      const nextOccurrenceCandidate = createMealOccurrence(
+        activity,
+        lane,
+        nextStartPlaybackTime > run.activePlaybackTime ? nextStartPlaybackTime : nextStartPlaybackTime + cycleDurationSeconds,
+      );
+      nextOccurrence = !nextOccurrence || nextOccurrenceCandidate.startPlaybackTime < nextOccurrence.startPlaybackTime
+        ? nextOccurrenceCandidate
+        : nextOccurrence;
+    });
+
+  return {
+    current: currentOccurrence
+      ? `Now: ${currentOccurrence.label} is underway · ${formatHours(currentOccurrence.startPlaybackTime)}–${formatHours(currentOccurrence.endPlaybackTime)} · ${currentOccurrence.summary}.`
+      : `Now: No meal is active at ${formatHours(run.activePlaybackTime)}.`,
+    mostRecent: mostRecentOccurrence
+      ? `Most recent: ${mostRecentOccurrence.label} finished at ${formatHours(mostRecentOccurrence.endPlaybackTime)} · ${mostRecentOccurrence.summary}.`
+      : 'Most recent: No meal has finished yet.',
+    next: nextOccurrence
+      ? `Next: ${nextOccurrence.label} starts at ${formatHours(nextOccurrence.startPlaybackTime)} · ${nextOccurrence.summary}.`
+      : 'Next: No future meal is scheduled.',
+  };
 }
 
 function createScrubberStatus(run: Run): string {
@@ -424,6 +621,8 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         playbackStep: 1,
         checkpointTimes: options.run.history.checkpoints.map((checkpoint) => checkpoint.playbackTime),
         selectedCheckpointIndex: createSelectedCheckpointIndex(options.run),
+        mealTimelineEvents: createFooterMealTimelineEvents(options.run),
+        eventReadout: createFooterEventReadout(options.run),
       },
     },
   };

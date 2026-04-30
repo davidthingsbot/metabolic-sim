@@ -1,5 +1,5 @@
 import { h, type FunctionalComponent } from 'preact';
-import type { ShellSnapshot } from '../../models/shellSnapshot';
+import type { ShellFooterMealTimelineEvent, ShellSnapshot } from '../../models/shellSnapshot';
 
 export interface ShellFooterViewProps {
   snapshot: ShellSnapshot;
@@ -7,6 +7,15 @@ export interface ShellFooterViewProps {
   onStepPlayback: () => void;
   onTogglePlaying: () => void;
   onBranchPlaybackTime: (playbackTime: number) => void;
+}
+
+function createMealEventClassName(event: ShellFooterMealTimelineEvent): string {
+  return `timeline-meal-event timeline-meal-event-${event.status}`;
+}
+
+function createMealEventStyle(event: ShellFooterMealTimelineEvent): string {
+  const widthPercent = Math.max(event.widthPercent, 0.6);
+  return `left:${event.offsetPercent}%;width:${widthPercent}%;`;
 }
 
 export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({
@@ -40,6 +49,12 @@ export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({
         h('span', { class: 'control-label' }, 'Timeline scrubber'),
         h('span', { class: 'timeline-status' }, snapshot.bands.footer.scrubberStatus),
       ]),
+      h('div', { class: 'timeline-meal-track' }, snapshot.bands.footer.mealTimelineEvents.map((event) =>
+        h('div', { key: event.id, class: createMealEventClassName(event), style: createMealEventStyle(event) }, [
+          h('span', { class: 'timeline-meal-event-label' }, event.label),
+          h('span', { class: 'timeline-meal-event-time' }, `${event.startLabel}–${event.endLabel}`),
+        ]),
+      )),
       h('input', {
         class: 'timeline-slider',
         type: 'range',
@@ -55,5 +70,10 @@ export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({
           }
         },
       }),
+      h('div', { class: 'timeline-event-readout' }, [
+        h('p', null, snapshot.bands.footer.eventReadout.current),
+        h('p', null, snapshot.bands.footer.eventReadout.mostRecent),
+        h('p', null, snapshot.bands.footer.eventReadout.next),
+      ]),
     ]),
   ]);
