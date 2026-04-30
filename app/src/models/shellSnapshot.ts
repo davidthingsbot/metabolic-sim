@@ -21,6 +21,13 @@ export interface ShellWorkspaceOption {
   isSelected: boolean;
 }
 
+export interface ShellPlannerLaneOption {
+  id: string;
+  label: string;
+  placementLabel: string;
+  cycleDurationMinutes?: number;
+}
+
 export interface ShellSnapshot {
   runName: string;
   theme: 'light' | 'dark';
@@ -28,6 +35,9 @@ export interface ShellSnapshot {
     value: Workspace;
     label: string;
     options: ShellWorkspaceOption[];
+  };
+  planner: {
+    laneOptions: ShellPlannerLaneOption[];
   };
   systems: ShellSystemItem[];
   bands: {
@@ -176,6 +186,23 @@ function createPlannerCards(run: Run): ShellDetailCard[] {
   ];
 }
 
+function createPlannerLaneOptions(run: Run): ShellPlannerLaneOption[] {
+  return run.scheduleLanes.map((lane) =>
+    lane.kind === 'repeating-cycle'
+      ? {
+          id: lane.id,
+          label: lane.name,
+          placementLabel: 'Cycle placement',
+          cycleDurationMinutes: lane.cycleDurationMinutes,
+        }
+      : {
+          id: lane.id,
+          label: lane.name,
+          placementLabel: 'Start time',
+        },
+  );
+}
+
 export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
   const state = options.run.individuals[0]?.state;
   const bloodSugar = state?.substances.glucose.blood ?? 0;
@@ -195,6 +222,9 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         ...option,
         isSelected: option.value === options.workspace,
       })),
+    },
+    planner: {
+      laneOptions: createPlannerLaneOptions(options.run),
     },
     systems: SYSTEMS.map((system) => ({
       ...system,

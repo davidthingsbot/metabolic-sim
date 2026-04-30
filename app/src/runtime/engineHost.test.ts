@@ -263,6 +263,48 @@ describe('createEngineHost', () => {
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
   });
 
+  it('creates a planned one-off meal through the authoritative host, rebuilds history, and persists the new schedule', async () => {
+    const repository = createRunRepository(new InMemoryDocumentStore());
+    const seededRun = createRun({ name: 'Planner Edit Run' });
+    await repository.saveRun(seededRun);
+    await repository.setActiveRunId(seededRun.id);
+
+    const host = await createEngineHost({
+      repository,
+      createDefaultRun: () => createRun({ name: 'Fallback Run' }),
+    });
+
+    await host.stepPlayback(300);
+    await host.createMealActivity({
+      laneId: host.getSnapshot().activeRun.scheduleLanes.find((lane) => lane.kind === 'one-off')?.id ?? '',
+      startMinute: 0,
+      durationMinutes: 5,
+      carbsGrams: 50,
+    });
+
+    const snapshot = host.getSnapshot();
+    const persistedRun = await repository.loadActiveRun();
+    const expectedState = createRun({ name: 'Expected Replay' }).individuals[0].state;
+    for (let minute = 0; minute < 5; minute += 1) {
+      expectedState.substances.glucose.gut += 10;
+      step(expectedState, 60);
+    }
+
+    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.scheduledActivities).toEqual([
+      expect.objectContaining({
+        type: 'meal',
+        startPlaybackTime: 0,
+        durationMinutes: 5,
+        carbsGrams: 50,
+      }),
+    ]);
+    expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(persistedRun?.scheduledActivities).toEqual(snapshot.activeRun.scheduledActivities);
+    expect(persistedRun?.individuals[0].state).toEqual(expectedState);
+  });
+
   it('branches the active run from a recorded checkpoint, persists the new run, and switches authority to it', async () => {
     const repository = createRunRepository(new InMemoryDocumentStore());
     const sourceRun = createRun({ name: 'Source Run' });

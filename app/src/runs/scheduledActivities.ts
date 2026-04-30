@@ -1,4 +1,15 @@
-import type { RepeatingCycleScheduleLane, ScheduleLane, ScheduledActivity, ScheduledMealActivity } from './types';
+import type {
+  CreateScheduledMealActivityInput,
+  RepeatingCycleScheduleLane,
+  Run,
+  ScheduleLane,
+  ScheduledActivity,
+  ScheduledMealActivity,
+} from './types';
+
+function createScheduledActivityId(): string {
+  return `activity-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function hasStartPlaybackTime(activity: ScheduledActivity): activity is ScheduledMealActivity & { startPlaybackTime: number } {
   return 'startPlaybackTime' in activity;
@@ -50,6 +61,35 @@ function calculateRepeatingOverlapSeconds(
 
 export function getScheduledMealActivities(activities: ScheduledActivity[]): ScheduledMealActivity[] {
   return activities.filter((activity): activity is ScheduledMealActivity => activity.type === 'meal');
+}
+
+export function appendScheduledMealActivity(run: Run, input: CreateScheduledMealActivityInput): ScheduledMealActivity {
+  const lane = run.scheduleLanes.find((candidate) => candidate.id === input.laneId);
+
+  if (!lane) {
+    throw new Error(`Cannot create meal for missing lane ${input.laneId}`);
+  }
+
+  const scheduledMealActivity: ScheduledMealActivity = lane.kind === 'repeating-cycle'
+    ? {
+        id: createScheduledActivityId(),
+        laneId: lane.id,
+        type: 'meal',
+        startCycleMinute: ((input.startMinute % lane.cycleDurationMinutes) + lane.cycleDurationMinutes) % lane.cycleDurationMinutes,
+        durationMinutes: input.durationMinutes,
+        carbsGrams: input.carbsGrams,
+      }
+    : {
+        id: createScheduledActivityId(),
+        laneId: lane.id,
+        type: 'meal',
+        startPlaybackTime: input.startMinute * 60,
+        durationMinutes: input.durationMinutes,
+        carbsGrams: input.carbsGrams,
+      };
+
+  run.scheduledActivities.push(scheduledMealActivity);
+  return scheduledMealActivity;
 }
 
 export function getMealCarbsForPlaybackWindow(

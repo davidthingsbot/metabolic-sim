@@ -1,6 +1,7 @@
 import type { Theme } from '../theme';
 import type { EngineHost } from '../runtime/engineHost';
 import type { ShellStateHost } from '../runtime/shellStateHost';
+import type { CreateScheduledMealActivityInput } from '../runs/types';
 import { createShellSnapshot, type ShellSnapshot, type SystemId, type Workspace } from './shellSnapshot';
 
 export interface ShellModel {
@@ -9,6 +10,7 @@ export interface ShellModel {
   setWorkspace(workspace: Workspace): void;
   selectSystem(systemId: SystemId): void;
   setTheme(theme: Theme): void;
+  createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   setPlaybackTime(playbackTime: number): Promise<void>;
   branchActiveRunFromPlaybackTime(playbackTime: number, runName?: string): Promise<void>;
   stepPlayback(stepSeconds?: number): Promise<void>;
@@ -60,6 +62,9 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     },
     setTheme(nextTheme) {
       options.shellStateHost.setTheme(nextTheme);
+    },
+    async createMealActivity(input) {
+      await options.engineHost.createMealActivity(input);
     },
     async setPlaybackTime(playbackTime) {
       await options.engineHost.restorePlaybackTime(playbackTime);

@@ -87,6 +87,27 @@ describe('createShellSnapshot', () => {
     expect(snapshot.bands.midsection.detailCards[1].body).toContain('1 scheduled meal');
     expect(snapshot.bands.midsection.detailCards[2].body).toContain('Repeats every 1d 0h');
     expect(snapshot.bands.midsection.detailCards[2].body).toContain('1 scheduled meal');
+    expect(snapshot.planner.laneOptions).toEqual([
+      expect.objectContaining({
+        label: 'One-Off',
+        placementLabel: 'Start time',
+      }),
+      expect.objectContaining({
+        label: 'Daily',
+        placementLabel: 'Cycle placement',
+        cycleDurationMinutes: 1440,
+      }),
+      expect.objectContaining({
+        label: 'Alternating Days',
+        placementLabel: 'Cycle placement',
+        cycleDurationMinutes: 2880,
+      }),
+      expect.objectContaining({
+        label: 'Weekly',
+        placementLabel: 'Cycle placement',
+        cycleDurationMinutes: 10080,
+      }),
+    ]);
   });
 
   it('exposes recorded history details in the footer scrubber status', () => {

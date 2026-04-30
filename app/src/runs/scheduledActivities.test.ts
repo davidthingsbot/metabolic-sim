@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getMealCarbsForPlaybackWindow } from './scheduledActivities';
+import { createRun } from './runFactory';
+import { appendScheduledMealActivity, getMealCarbsForPlaybackWindow } from './scheduledActivities';
 import type { ScheduleLane, ScheduledMealActivity } from './types';
 
 describe('getMealCarbsForPlaybackWindow', () => {
@@ -45,5 +46,34 @@ describe('getMealCarbsForPlaybackWindow', () => {
     expect(getMealCarbsForPlaybackWindow(activity, lane, 120, 60)).toBe(10);
     expect(getMealCarbsForPlaybackWindow(activity, lane, 180, 60)).toBe(0);
     expect(getMealCarbsForPlaybackWindow(activity, lane, 240, 60)).toBe(10);
+  });
+
+  it('appends one-off and repeating planned meals in the authoritative lane format', () => {
+    const run = createRun({ name: 'Append Test' });
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const weeklyLane = run.scheduleLanes.find(
+      (lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 10080,
+    );
+
+    if (!oneOffLane || !weeklyLane || weeklyLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and weekly lanes');
+    }
+
+    const oneOffMeal = appendScheduledMealActivity(run, {
+      laneId: oneOffLane.id,
+      startMinute: 150,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+    const repeatingMeal = appendScheduledMealActivity(run, {
+      laneId: weeklyLane.id,
+      startMinute: 1590,
+      durationMinutes: 30,
+      carbsGrams: 25,
+    });
+
+    expect(oneOffMeal).toEqual(expect.objectContaining({ startPlaybackTime: 9000 }));
+    expect(repeatingMeal).toEqual(expect.objectContaining({ startCycleMinute: 1590 }));
+    expect(run.scheduledActivities).toEqual([oneOffMeal, repeatingMeal]);
   });
 });

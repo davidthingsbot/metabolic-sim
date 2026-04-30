@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRun } from '../runs/runFactory';
+import { appendScheduledMealActivity } from '../runs/scheduledActivities';
+import type { CreateScheduledMealActivityInput } from '../runs/types';
 import { createShellModel } from './shellModel';
 
 function createSampleRun() {
@@ -34,6 +36,12 @@ function createStubSession(run = createSampleRun()) {
     async updateActiveRun(update: (draft: typeof activeRun) => void) {
       const draft = structuredClone(activeRun);
       update(draft);
+      activeRun = draft;
+      listeners.forEach((listener) => listener());
+    },
+    async createMealActivity(input: CreateScheduledMealActivityInput) {
+      const draft = structuredClone(activeRun);
+      appendScheduledMealActivity(draft, input);
       activeRun = draft;
       listeners.forEach((listener) => listener());
     },
@@ -241,6 +249,32 @@ describe('createShellModel', () => {
     const snapshot = model.getSnapshot();
     expect(snapshot.bands.footer.playbackTime).toBe(1800);
     expect(snapshot.bands.header.highLevelStatus).toContain('Blood sugar 5.8 g');
+  });
+
+  it('creates a meal through the shell model and immediately surfaces it in the planner snapshot', async () => {
+    const model = createShellModel({
+      engineHost: createStubSession(createRun({ name: 'Editable Run' })),
+      shellStateHost: createStubShellStateHost(),
+    });
+
+    model.setWorkspace('event-planner');
+    await model.createMealActivity({
+      laneId: model.getSnapshot().planner.laneOptions[0]?.id ?? '',
+      startMinute: 120,
+      durationMinutes: 45,
+      carbsGrams: 60,
+    });
+
+    const snapshot = model.getSnapshot();
+    expect(snapshot.workspace.value).toBe('event-planner');
+    expect(snapshot.bands.midsection.detailCards[1].body).toContain('1 scheduled meal');
+    expect(snapshot.bands.midsection.detailCards[1].body).toContain('First meal starts at 2h 00m');
+    expect(snapshot.planner.laneOptions.map((lane) => lane.label)).toEqual([
+      'One-Off',
+      'Daily',
+      'Alternating Days',
+      'Weekly',
+    ]);
   });
 
   it('branches the active run from the selected recorded checkpoint through the authoritative host', async () => {

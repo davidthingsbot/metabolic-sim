@@ -4,8 +4,9 @@ import { step } from '../engine/step';
 import type { RunRepository } from '../persistence/runRepository';
 import { branchRunFromSnapshot } from '../runs/branchRun';
 import { ensureRunHistory } from '../runs/runFactory';
-import { getMealCarbsForPlaybackWindow, getScheduledMealActivities } from '../runs/scheduledActivities';
-import type { Run, RunHistoryCheckpoint } from '../runs/types';
+import { replayRunToPlaybackTime } from '../runs/replayRun';
+import { appendScheduledMealActivity, getMealCarbsForPlaybackWindow, getScheduledMealActivities } from '../runs/scheduledActivities';
+import type { CreateScheduledMealActivityInput, Run, RunHistoryCheckpoint } from '../runs/types';
 
 export interface EngineHostSnapshot {
   activeRun: Run;
@@ -15,6 +16,7 @@ export interface EngineHost {
   getSnapshot(): EngineHostSnapshot;
   subscribe(listener: () => void): () => void;
   updateActiveRun(update: (draft: Run) => void): Promise<void>;
+  createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   recordHistoryCheckpoint(playbackTime?: number): Promise<void>;
   restorePlaybackTime(playbackTime: number): Promise<void>;
   branchActiveRunFromPlaybackTime(playbackTime: number, runName?: string): Promise<void>;
@@ -134,6 +136,13 @@ export async function createEngineHost(options: CreateEngineHostOptions): Promis
     },
     async updateActiveRun(update) {
       await commit(update);
+    },
+    async createMealActivity(input) {
+      await commit((draft) => {
+        const targetPlaybackTime = draft.activePlaybackTime;
+        appendScheduledMealActivity(draft, input);
+        replayRunToPlaybackTime(draft, targetPlaybackTime);
+      });
     },
     async recordHistoryCheckpoint(playbackTime = activeRun.activePlaybackTime) {
       await commit((draft) => {

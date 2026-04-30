@@ -64,6 +64,13 @@ export interface ScheduledMealActivityBase extends ScheduledActivityBase {
   carbsGrams: number;
 }
 
+export interface CreateScheduledMealActivityInput {
+  laneId: string;
+  startMinute: number;
+  durationMinutes: number;
+  carbsGrams: number;
+}
+
 export type ScheduledMealActivity =
   | (ScheduledMealActivityBase & OneOffScheduledActivityPlacement)
   | (ScheduledMealActivityBase & RepeatingScheduledActivityPlacement);
