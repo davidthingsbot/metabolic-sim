@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>svg-techniques - trace outline fitting</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <h1>Trace Outline Fitting</h1>
+      <div class="status" id="status">Loading</div>
+    </header>
+
+    <main class="fit-layout">
+      <aside class="controls">
+        <label>
+          <span>Sex</span>
+          <select id="sex">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Age</span>
+          <select id="age">
+            <option value="3">3 yr</option>
+            <option value="6">6 yr</option>
+            <option value="10">10 yr</option>
+            <option value="15">15 yr</option>
+            <option value="20">20 yr</option>
+            <option value="35" selected>35 yr</option>
+            <option value="55">55 yr</option>
+            <option value="75">75 yr</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Reference size</span>
+          <select id="referenceSize">
+            <option value="slim">Slim</option>
+            <option value="lean">Lean</option>
+            <option value="average" selected>Average</option>
+            <option value="overweight">Overweight</option>
+            <option value="obese">Obese</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Generated body mass index <output id="bmiOut">24</output></span>
+          <input id="bodyMassIndex" type="range" min="18" max="40" step="1" value="24" />
+        </label>
+
+        <fieldset class="coefficient-set">
+          <legend>Shape Coefficients</legend>
+          <label>
+            <span>Shoulder <output id="shoulderOut">0%</output></span>
+            <input id="shoulderScale" type="range" min="-25" max="25" step="1" value="0" />
+          </label>
+          <label>
+            <span>Chest <output id="chestOut">0%</output></span>
+            <input id="chestScale" type="range" min="-25" max="25" step="1" value="0" />
+          </label>
+          <label>
+            <span>Waist <output id="waistOut">0%</output></span>
+            <input id="waistScale" type="range" min="-30" max="30" step="1" value="0" />
+          </label>
+          <label>
+            <span>Belly <output id="bellyOut">0%</output></span>
+            <input id="bellyScale" type="range" min="-30" max="35" step="1" value="0" />
+          </label>
+          <label>
+            <span>Hip <output id="hipOut">0%</output></span>
+            <input id="hipScale" type="range" min="-30" max="35" step="1" value="0" />
+          </label>
+          <label>
+            <span>Hip roundness <output id="hipRoundnessOut">0</output></span>
+            <input id="hipRoundness" type="range" min="-100" max="100" step="5" value="0" />
+          </label>
+          <label>
+            <span>Thigh <output id="thighOut">0%</output></span>
+            <input id="thighScale" type="range" min="-30" max="55" step="1" value="0" />
+          </label>
+          <label>
+            <span>Lower leg <output id="lowerLegOut">0%</output></span>
+            <input id="lowerLegScale" type="range" min="-30" max="55" step="1" value="0" />
+          </label>
+          <label>
+            <span>Arm <output id="armOut">0%</output></span>
+            <input id="armScale" type="range" min="-30" max="55" step="1" value="0" />
+          </label>
+          <label>
+            <span>Crotch lift <output id="crotchLiftOut">0 px</output></span>
+            <input id="crotchLift" type="range" min="-14" max="14" step="1" value="0" />
+          </label>
+        </fieldset>
+
+        <label>
+          <span>Trace threshold <output id="thresholdOut">214</output></span>
+          <input id="threshold" type="range" min="150" max="245" step="1" value="214" />
+        </label>
+
+        <label class="check-row">
+          <input id="ignoreHead" type="checkbox" checked />
+          <span>Score shoulders down</span>
+        </label>
+
+        <button id="reset" type="button">Reset</button>
+
+        <section class="optimizer-box">
+          <label class="check-row">
+            <input id="fitBodyMassIndex" type="checkbox" />
+            <span>Fit generated body mass index</span>
+          </label>
+          <div class="button-row">
+            <button id="autoFit" type="button">Auto fit</button>
+            <button id="stopFit" type="button" disabled>Stop</button>
+          </div>
+          <progress id="fitProgress" max="1" value="0"></progress>
+          <div id="fitReport" class="fit-report">Idle</div>
+        </section>
+      </aside>
+
+      <section class="stage">
+        <div class="overlay-card">
+          <header>
+            <h2>Trace Line Error</h2>
+            <div class="legend">
+              <span><i class="target"></i> target trace</span>
+              <span><i class="generated"></i> generated trace</span>
+              <span><i class="overlap"></i> matching lines</span>
+            </div>
+          </header>
+          <canvas id="overlay" width="360" height="432"></canvas>
+        </div>
+
+        <div class="overlay-card">
+          <header>
+            <h2>Named Control Fit</h2>
+            <div class="legend">
+              <span><i class="target"></i> traced target</span>
+              <span><i class="generated"></i> generator control</span>
+              <span><i class="overlap"></i> error vector</span>
+            </div>
+          </header>
+          <canvas id="controlOverlay" width="360" height="432"></canvas>
+        </div>
+
+        <div class="preview-grid">
+          <section>
+            <h2>Target Cell</h2>
+            <canvas id="targetCrop" width="220" height="240"></canvas>
+          </section>
+          <section>
+            <h2>Target Trace Lines</h2>
+            <canvas id="targetFill" width="220" height="264"></canvas>
+          </section>
+          <section>
+            <h2>Generated Trace Lines</h2>
+            <canvas id="generatedFill" width="220" height="264"></canvas>
+          </section>
+        </div>
+      </section>
+
+      <section class="report">
+        <div class="metric-grid">
+          <div>
+            <span>Score</span>
+            <strong id="score">-</strong>
+          </div>
+          <div>
+            <span>Line overlap</span>
+            <strong id="overlapMetric">-</strong>
+          </div>
+          <div>
+            <span>Line width error</span>
+            <strong id="widthMetric">-</strong>
+          </div>
+          <div>
+            <span>Control error</span>
+            <strong id="centerMetric">-</strong>
+          </div>
+        </div>
+
+        <section class="corrections">
+          <h2>Largest Width Errors</h2>
+          <ol id="corrections"></ol>
+        </section>
+
+        <section class="band-table-wrap">
+          <h2>Control Point Targets</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Point</th>
+                <th>Target</th>
+                <th>Generated</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody id="controlRows"></tbody>
+          </table>
+        </section>
+
+        <section class="band-table-wrap">
+          <h2>Band Measurements</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Band</th>
+                <th>Target</th>
+                <th>Generated</th>
+                <th>Error</th>
+                <th>Left edge</th>
+                <th>Right edge</th>
+              </tr>
+            </thead>
+            <tbody id="bandRows"></tbody>
+          </table>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="./vendor/imagetracer_v1.2.6.js"></script>
+  <script type="module" src="./trace-reference.js"></script>
+</body>
+</html>
