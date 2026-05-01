@@ -1,8 +1,8 @@
 # Build Plan
 
-The phases below order the work. Each phase ends in something runnable. The design itself lives in `design.md`; this file is the *when* and the *current state*.
+`design.md` is the stable **what**. This file is the living **when** and **current state**.
 
-This file is living. Update the status markers as work moves forward. Update the dates and notes when phases start, finish, or shift.
+Update this file when a phase starts, finishes, changes order, or when its acceptance criteria change. Keep completed detail brief; the git history and tests carry the exhaustive record.
 
 ---
 
@@ -11,117 +11,95 @@ This file is living. Update the status markers as work moves forward. Update the
 - ⬜ Not started
 - 🟡 In progress
 - ✅ Done
-- 🔵 Blocked (with note)
+- 🔵 Blocked
 
 ---
 
-## Research
+## Current checkpoint — 2026-05-01
 
-Research feeding the design lives in `background/`. The current research index with completion status is in `background/README.md`. Research is dispatched in tiers that align with the phasing below — Tier N's results inform Phase N (roughly).
+**App:** live on GitHub Pages at https://davidthingsbot.github.io/metabolic-sim/.
 
-When a research note returns and contains design-relevant decisions, those are surfaced for review and merged into `design.md` before the affected phase begins.
+**Repository state:** local `main` is one commit ahead of `origin/main`:
+
+- Latest pushed app commit: `79f0964 feat: add playback speed and sparkline controls`
+- Local-only ops commit: `8155d0f ci: update GitHub Pages workflow runtime`
+
+The local-only commit updates the GitHub Pages workflow to Node 24 and newer GitHub Actions majors. It is ready, but pushing it is blocked until the GitHub token used by this environment has `workflow` scope.
+
+**Validation at the latest local checkpoint:**
+
+- `npm test` passed: 20 test files, 111 tests.
+- `npm run build` succeeded.
+- `git diff --check` was clean.
+
+**Local development access:** the Vite server supports LAN access when run with `npm run dev -- --host 0.0.0.0`. The project also allows the machine-name host `dw-x1pro-linux` in `app/vite.config.ts`.
+
+---
 
 ## Discipline that applies to every code-writing phase
 
-- **Test-driven development.** All engine and view code starts with a failing test (per `design.md §15`). Tests live alongside source. CI runs the suite on every push; red blocks deploy.
-- **Mobile-first.** Compact density (≤640 px) is the baseline that every phase ships first; larger tiers add density without reorganising (per `design.md §14`).
-- **Layout stability.** Positions on the screen are constant across time, views, density tiers, and multi-individual cells (per `design.md §4`).
+- **Test-driven development.** Engine and view code starts with a failing test. Tests live alongside source. CI runs the suite before deploy.
+- **Mobile-first.** Compact density, especially 360 × 640, is the baseline. Larger tiers add density without reorganising.
+- **Layout stability.** Screen positions stay stable across time advancement, view switching, density tiers, and future multi-individual layouts.
+- **Metric units and glossary naming.** Use `design/glossary.md` for stable variable/scientific/plain naming.
+- **Static app.** No backend, accounts, telemetry, or live data dependency.
+
+---
+
+## Research track
+
+Research feeding the design lives in `background/`. The prior-art survey and Phase 0.5 deep dives live in `background/prior-art/`.
+
+**Current status:** ✅ prior-art sweep, verification, six deep dives, and synthesis are complete. The synthesis includes proposed `design.md` edits for separate review; design changes should still be applied deliberately, not auto-merged from research.
 
 ---
 
 ## Phase 0 — Repository, Pages, and base page
 
-**Status:** ✅ Done — live at https://davidthingsbot.github.io/metabolic-sim/
+**Status:** ✅ Done
+
+Stand up the website infrastructure before simulation work begins.
 
 **Delivered:**
-- Vite 7 + TypeScript 5 scaffold under `app/` (no framework — added in Phase 2 only when needed).
-- `npm install`, `npm run dev` (localhost:5173) and `npm run build` all working locally.
-- Base page renders: project title, lede, "coming soon" placeholder, light/dark mode toggle (preference stored in localStorage; respects system preference on first load).
-- `vite.config.ts` flips base path between `/` (local) and `/metabolic-sim/` (Pages) via the `GITHUB_ACTIONS` env var. Verified the prod-build asset URLs prefix correctly.
-- `.github/workflows/deploy.yml` configured to build under `app/` and deploy via `actions/deploy-pages` (modern Pages source, no `gh-pages` branch).
-- `.gitignore` covers `node_modules/`, `dist/`, `.vite/`, OS junk, and `.claude/settings.local.json`.
-- Root `README.md` and `app/README.md` updated with run-locally and deployment instructions.
-- `git init` ran; nothing committed yet.
 
-**Pending — user actions:**
-1. Create the GitHub repository (`metabolic-sim` is the assumed name; rename here and in `vite.config.ts` if different).
-2. First commit + push to `main`.
-3. In repo settings → Pages → set source to "GitHub Actions".
-4. Watch the first deploy run green; visit `https://<user>.github.io/metabolic-sim/`.
+- Vite + TypeScript static app under `app/`.
+- GitHub repository and `main` branch workflow.
+- GitHub Pages deployment from `.github/workflows/deploy.yml`.
+- Local dev, build, and test commands documented.
+- Base page replaced by the real app shell in later phases.
+- Light/dark mode infrastructure.
+- GitHub Pages live URL verified.
+
+**Operational note:** the workflow currently deployed on `origin/main` still uses the older workflow runtime. A local commit updates it to Node 24 and newer Pages actions, but push is blocked by token scope until the active PAT includes `workflow`.
 
 **Done when:**
 
-- A first-time visitor can open `https://<user>.github.io/metabolic-sim/` and see the base page rendered correctly with no broken assets.
-- A new contributor can clone, `cd app && npm install && npm run dev`, and see the same base page locally.
-- The deployment workflow runs green on the next push.
-
----
-
-(Original step-by-step plan kept below for reference; "done so far" supersedes it.)
-
-Stand up the website infrastructure before any simulation work begins. Choose the initial technology stack, create the GitHub repository, get an empty page deploying to GitHub Pages from the main branch, and verify the same build runs locally for development.
-
-**Concrete steps:**
-
-1. **Tech stack decisions** — pick and record in this file's change log (historical note: the framework choice was later settled on Preact; the checklist below is preserved as the Phase 0 record):
-   - Build tool — Vite is the default unless the user has a preference (fast HMR, first-class TypeScript, simple `base` config for subdirectory deployment).
-   - Framework — initially start with no framework; later settled in Phase 2 on **Preact** as the small reactive layer for the app shell and views.
-   - Language — TypeScript (strict mode).
-   - Package manager — npm (broadest compatibility) unless the user prefers pnpm or bun.
-2. **Repository** — create the GitHub repository (default name `metabolic-sim`). Initialize git locally; first commit includes the existing `README.md`, `AGENTS.md`, `design/`, `background/`, and an empty `app/` skeleton. Push.
-3. **Base path configuration** — GitHub Pages serves the project at `https://<user>.github.io/metabolic-sim/`, but local dev expects `/`. Configure the build so the same code works in both:
-   - Vite: `base: process.env.GITHUB_ACTIONS ? '/metabolic-sim/' : '/'` in `vite.config.ts`.
-   - All asset URLs reference `import.meta.env.BASE_URL` — never hardcode `/`.
-   - Internal navigation, if any, prefixes `BASE_URL` too.
-4. **Base page** — `app/index.html` plus a minimal `app/src/main.ts` that renders the project title, a one-sentence description, light/dark mode toggle, and a "coming soon" placeholder for the simulator. Visual style is the v1 default (Anatomical-leaning); empty otherwise.
-5. **GitHub Actions workflow** — `.github/workflows/deploy.yml` that:
-   - triggers on push to `main`,
-   - runs `npm ci` and `npm run build` from the `app/` directory,
-   - deploys the `app/dist/` output to GitHub Pages using `actions/deploy-pages`.
-6. **Pages settings** — enable Pages on the repo, source = "GitHub Actions".
-7. **Verify both surfaces** — `npm run dev` from `app/` shows the base page locally at `http://localhost:5173/` (or whatever Vite picks); the GitHub Pages URL shows the same base page after the workflow completes.
-8. **README updates** — root `README.md` gets a "Running locally" and "Deployment" section pointing at the dev server command and the live URL. `app/README.md` gets the build commands.
-
-**Done when:**
-
-- A first-time visitor can open `https://<user>.github.io/metabolic-sim/` and see the base page rendered correctly with no broken assets.
-- A new contributor can clone, `cd app && npm install && npm run dev`, and see the same base page locally.
-- The deployment workflow runs green on the next push.
-
-**Watch out for:**
-
-- Forgetting `BASE_URL` in even one asset path — it will work locally and 404 on Pages.
-- Using `pages-build-deployment` instead of the modern `actions/deploy-pages` — the modern flow is more reliable and supports the official "GitHub Actions" Pages source.
-- Setting up Pages from the legacy `gh-pages` branch — the modern Actions-based flow does not need a separate branch.
+- A first-time visitor can open the Pages URL and see the app with no broken assets.
+- A contributor can clone, `cd app && npm install && npm run dev`, and run locally.
+- The deployment workflow runs green on push.
 
 ---
 
 ## Phase 0.5 — Prior art assessment
 
-**Status:** 🟡 In progress — surface sweep ✅, web-verification ✅, deep dives running, synthesis pending
+**Status:** ✅ Done
 
-A scan of what already exists in the space, so we know whether we are duplicating something, where to borrow ideas, and what distinguishes our project. Lives in `background/prior-art/`.
+Understand the landscape before locking down product and visual decisions.
 
-**Concrete steps:**
+**Delivered:**
 
-1. ✅ **First-phase surface sweep.** ~36 candidates catalogued across 9 categories. Index at `background/prior-art/README.md`.
-2. ✅ **Re-verify the surface sweep with live web access.** ~33 entries verified, ~14 materially updated, 2 marked 🔵 (could not verify), 1 reclassified ❌ (Veri — acquired by Oura, app sunset end of 2024), 6 new entries added. Notable changes captured in the README's Verification log. Five of six 🔍 candidates have images saved under `images/`.
-3. 🟡 **Deep dives on the 🔍 entries** (sub-agent running). One file per candidate in `background/prior-art/`:
-   - `vmh.md` — Virtual Metabolic Human / Recon3D
-   - `hummod.md` — HumMod whole-body physiology engine
-   - `biodigital-human.md` — interactive 3D anatomy benchmark
-   - `visible-body.md` — education-software distribution model
-   - `levels.md` — consumer-facing "see what food does" framing
-   - `physioex.md` — closest direct competitor in browser-based physiology teaching
-4. 🟡 **For each deep dive** (in progress with step 3): what they do well, what they do badly, what to borrow, what to avoid, how their decisions inform ours, screenshots where useful. Bias toward concrete UX/architecture lessons over encyclopaedic summary.
-5. ⬜ **Synthesis pass** — `background/prior-art/synthesis.md`. Will consolidate validated gaps, UX patterns worth borrowing, anti-patterns to avoid, and which deferred decisions in `design.md §17` prior art can now inform.
-6. ⬜ **Design feedback.** Synthesis will end with 5–10 concrete proposed edits to `design.md`. The user reviews and approves before any change lands. Sub-agents do not modify `design.md` directly.
+- Surface survey of roughly 40+ relevant products, research systems, and educational tools.
+- Live verification pass with pricing/status/platform corrections.
+- Deep dives for:
+  - Virtual Metabolic Human / Recon3D
+  - HumMod
+  - BioDigital Human
+  - Visible Body
+  - Levels
+  - PhysioEx
+- Synthesis at `background/prior-art/synthesis.md` covering gaps, borrow/avoid lessons, and proposed design edits.
 
-**Done when:**
-
-- Each 🔍 candidate has its own page with screenshots and a "borrow / avoid" section.
-- The synthesis note exists and either confirms the design's distinct angle or proposes specific design changes.
-- The user has signed off on the resulting design changes (or confirmed there are none).
+**Carry-forward:** review the synthesis proposals before major edits to `design.md` or before committing to the anatomical/body-view visual direction.
 
 ---
 
@@ -129,40 +107,84 @@ A scan of what already exists in the space, so we know whether we are duplicatin
 
 **Status:** ✅ Done
 
-Substances, locations, one substance flow (blood glucose), one hormone (insulin), eating one meal, time advancing. No UI — Node test harness only.
+Substances, locations, one substance flow, one hormone response, eating one meal, and time advancing. Node/Vitest harness only at first; later phases wire it into the app shell.
 
 **Delivered:**
-- TDD discipline established with vitest. CI runs `npm test` before `npm run build`; red blocks deploy.
-- Engine state types (`State`, `Substance`, `Location`, `Hormone`) — minimal v1 set: glucose across `gut` / `blood` / `cells`, insulin in bloodstream.
-- `step(state, dt)` composes three flows: digestion (gut → blood, first-order), insulinResponse (lagged target with 15-min time constant), cellularUptake (blood → cells, gated by insulin × glucose excess).
-- Meal event applied via `applyEvent(state, event)`; Phase 5 wires the event queue into `step` itself.
-- 26 passing tests across 5 test files. Each numerical constant carries an `@provenance` comment per design.md §11.
-- End-to-end acceptance test: 50 g meal, 4-hour simulation, asserts the qualitative shape (rises, peaks mid-run, returns toward fasting, mass conserved).
 
-**Carry-forward to Phase 3:**
-- Calibrate constants against reference postprandial curves: `DIGESTION_RATE_PER_MINUTE`, `INSULIN_GAIN_UU_PER_G`, `INSULIN_TIME_CONSTANT_MIN`, `CELLULAR_UPTAKE_K`.
-- Replace the linear insulin target with a sigmoidal first-phase + tonic model.
-- Tighten the peak-time bound on the end-to-end test to 30–60 minutes once calibration lands.
+- Strict TypeScript engine state types for the v1 glucose/insulin skeleton.
+- `step(state, dt)` with digestion, insulin response, and cellular uptake flows.
+- Meal-event application.
+- Qualitative end-to-end meal-response test.
+- Provenance comments on numerical constants.
+- CI test gate established.
+
+**Carry-forward:** calibrate constants against reference postprandial curves before presenting the engine as physiologically credible.
 
 ---
 
 ## Phase 2 — Simulation shell, persisted runs, and first state/event view
 
-**Status:** ⬜ Not started
+**Status:** 🟡 In progress — most shell foundations are implemented; final acceptance/polish remains.
 
-Build the first real app implementation around the existing Phase 1 engine. This phase lands the mobile-first shell: **Sim Bar** (run selector, play/pause, reset, speed, resolution, scrub line), **Viewer Bar** (label mode and time-window controls), a midsection that can switch between **body-status workspace** and **event-planner workspace**, named runs, browser persistence, and replayable history. **Preact** is the chosen reactive layer for this shell. The event-planner side includes the first schedule editor and event log, organised around minimal default lanes (**One-Off** and **Daily**) plus user-addable repeating cycle lanes of arbitrary duration. The key examples the planner must support are a **1-day** cycle for meals and sleep, a **2-day** alternating cycle for exercise schedules, and a **7-day** weekly cycle for selected drinking days, but the longer cycles come from explicit custom-lane creation rather than being seeded by default. The body-status side is instrument-panel style rather than anatomical — key locations with instantaneous quantity bars, consistent same-family diagram capsules in the upper panel areas, and small past-value charts that do not balloon into dominant oversized trend panels. The data model is multi-individual-ready even though the first UI exposes one body. Meal events affect physiology immediately, and meals / exercise / drinking / sleep are all modeled as duration-based activities over the planner's minute-grid clock so their effects accrue incrementally while active; the event schema and scheduling model for sleep and exercise also land here so later phases can deepen their effects without rewriting the shell.
+Build the first real app around the Phase 1 engine: mobile-first shell, named runs, persistence, replayable history, branching, event planning, body-status inspection, and a bottom timeline/run bar.
 
-**Done when:** On a 360 × 640 phone, a user can create a named run, schedule at least a meal into a visible cycle lane, switch the midsection between body-status and event-planner workspaces, add events directly by clicking into the cycle grid, see the simulator's current position within the active cycle, start and stop the simulation, scrub through recorded history in the same viewer, branch a new future from a historical moment, close the browser, and return to the same run where they left off.
+**Delivered so far:**
+
+- Preact app shell with persistent header, midsection, and footer bands.
+- Run model that is multi-individual-ready internally while exposing one body in the first UI.
+- Browser persistence via IndexedDB-oriented repository code and active-run restoration.
+- New/default runs start at simulated age 25: `788,400,000` seconds.
+- Engine host that advances the current run and records history checkpoints.
+- Replay and branch-from-history behavior with tests.
+- Body-status workspace with overview/status cards and monitor-style readouts.
+- Event-planner workspace with day lanes, visible hour marks, lane-click event drafting rounded to 15 minutes, and Add/Edit Event pane.
+- Event editor split into a settings/actions side and a placeholder Details side.
+- Duration-based meal/activity scheduling scaffolding.
+- Footer reworked into controls plus a master/detail timeline:
+  - lifetime timeline with year ticks, current-position marker, event bands, and selected-day bracket;
+  - selected-day 24-hour timeline with hour ticks and duration event blocks.
+- Precise footer timestamp display, e.g. `T+25y 000d 00:00:00`.
+- Playback-speed control cycling through `1× → 5× → 15× → 60×`.
+- Playback loop advances `60 * playbackSpeedMultiplier` simulated seconds every 300 ms while playing.
+- Sparkline metric selector cycling through Blood sugar, Gut sugar, Cell sugar, and Storage signal.
+- Label-mode and theme controls in the header.
+- Component/model/runtime tests for the shell behavior above.
+- Full app test suite and production build passing at the latest local checkpoint.
+
+**Known gaps before calling Phase 2 done:**
+
+1. **Do a fresh 360 × 640 browser acceptance pass.** Verify the current shell visually after the latest playback/sparkline changes, not just via tests.
+2. **Finish monitor-card polish.** Monitor cards need a deliberate pass for visible sparklines, numeric-change animation classes, and small-screen legibility.
+3. **Replace or explicitly defer the Details placeholder.** The Add/Edit Event pane's right side still says that food and activity selectors will appear there.
+4. **Tighten event kind coverage.** Meals are the first real event path; exercise, sleep, alcohol, and other duration event types are still mostly schema/design scaffolding.
+5. **Clean up terminology drift.** The implemented shell uses practical header/footer wording, while `design.md` still describes Sim Bar / Viewer Bar / bottom timeline concepts. Decide whether to rename UI labels or simply document the implementation mapping.
+6. **Confirm persistence UX end-to-end.** Tests cover restoration pieces, but the user-facing flow should be rechecked in-browser: create/rename run, edit schedule, close/reopen, resume.
+
+**Done when:**
+
+On a 360 × 640 phone viewport, a user can:
+
+- create and return to a named run;
+- schedule at least a meal into a visible planner lane;
+- add an event by clicking/tapping the planner lane;
+- switch between body-status and event-planner workspaces;
+- see the current simulator position in both planner and footer timelines;
+- play, pause, step, and change playback speed;
+- scrub or replay recorded history;
+- branch a new future from a historical moment;
+- close the browser and return to the same run where they left off.
 
 ---
 
-## Phase 3 — Whole Body view (Anatomical style, mobile first)
+## Phase 3 — Whole Body view, mobile first
 
 **Status:** ⬜ Not started
 
-Add the first anatomical Whole Body view on top of the Phase 2 shell. Static SVG schematic with one quantity (blood glucose) animated, using the already-landed Sim Bar, Viewer Bar, history, and persistence model. **Compact (≤640 px) is built first end-to-end** — the Single Hamburger scenario must run to completion on a 360 × 640 phone before any larger tier is considered. Standard / Detailed / Spacious tiers add density on top of the Compact baseline; they never reorganise it. Layout positions are constant across time and density transitions (Section 4).
+Add the first anatomical/diagrammatic Whole Body view on top of the Phase 2 shell. The Phase 2 body-status cards are the instrument-panel bridge; Phase 3 introduces the stable body schematic.
 
-**Done when:** A user can load the page on a phone, stay inside the persisted-run shell from Phase 2, and watch blood glucose respond to a hamburger across the visible organs end-to-end without horizontal scroll. Larger viewports add detail without changing position.
+**Done when:**
+
+A user can load the page on a phone, stay inside the persisted-run shell, and watch blood sugar respond to a meal across visible body systems without horizontal scroll. Larger viewports add detail without changing positions.
 
 ---
 
@@ -170,19 +192,23 @@ Add the first anatomical Whole Body view on top of the Phase 2 shell. Static SVG
 
 **Status:** ⬜ Not started
 
-All substances and hormones from `background/metabolic-pathways.md`. Eating, fasting, sleeping. The food library (per `background/foods-library.md`) and meal-assembly UI with familiar units, cooked-vs-uncooked variants, composite foods, and cocktails. The Single Hamburger and Healthy Baseline scenarios run convincingly inside the shell established in Phase 2.
+Expand from the glucose/insulin skeleton toward the v1 fuel model: food library, meal assembly, carbohydrate/fat/protein handling, fasting and sleep basics, and the Single Hamburger / Healthy Baseline scenarios.
 
-**Done when:** A user can build a real meal from the library — picking foods in familiar units — and watch the body process it across all tracked substances.
+**Done when:**
+
+A user can build a real meal from the library using familiar units with metric truth shown alongside, then watch the body process it across all tracked v1 substances.
 
 ---
 
-## Phase 5 — Exercise, recovery, and the Fuel Flows view
+## Phase 5 — Exercise, recovery, and Fuel Flows view
 
 **Status:** ⬜ Not started
 
-Exercise as a calendar event affecting all the right flows, with the recovery dynamics that follow it (post-exercise refilling, micro-damage repair, multi-week adaptation, recovery debt under chronic overload). Fuel Flows view added. Endurance Athlete scenario.
+Exercise events affect fuel selection and recovery. Add the Fuel Flows view and the Endurance Athlete scenario.
 
-**Done when:** A user can schedule a week of training, watch fuel selection shift through each session, see refilling and adaptation between sessions, and see overtraining emerge from inadequate recovery.
+**Done when:**
+
+A user can schedule a week of training, watch fuel selection shift through each session, see refilling and adaptation between sessions, and see overtraining emerge from inadequate recovery.
 
 ---
 
@@ -190,9 +216,11 @@ Exercise as a calendar event affecting all the right flows, with the recovery dy
 
 **Status:** ⬜ Not started
 
-Take the Phase 2 persistence/history foundation to full v1 depth: progressive history compression, richer branch management for alternative futures, stronger event-log browsing, jump-to-event polish, explicit bookmark workflows, and JSON import/export around named runs. The shell already supports replay and resume; this phase makes the long-run and many-run experience durable and comfortable.
+Take the Phase 2 history foundation to full v1 depth: progressive history compression, richer branch management, jump-to-event, bookmarks, explicit import/export, and long-run comfort.
 
-**Done when:** A user can manage several named runs, inspect alternative futures cleanly, keep long simulations without storage pain, and move through history and event logs fluidly.
+**Done when:**
+
+A user can manage several named runs, inspect alternative futures cleanly, keep long simulations without storage pain, and move through history and event logs fluidly.
 
 ---
 
@@ -200,9 +228,11 @@ Take the Phase 2 persistence/history foundation to full v1 depth: progressive hi
 
 **Status:** ⬜ Not started
 
-Tissue remodeling, body composition, muscle mass and tone, vessel wall health, per-organ Health scores with feedback into rate constants, visible aging cues. Long-Term State view including the stylized health diagrams (blood vessel cross-section, bone density, body shape silhouette, liver, muscle, lung, skin). Years of Fast Food and Aging Well scenarios.
+Tissue remodeling, body composition, muscle mass/tone, vessel-wall health, per-organ Health scores feeding back into rate constants, and visible aging cues.
 
-**Done when:** A user can watch a healthy 20-year-old's body shift visibly over ten simulated years under different lifestyles, with each per-organ Health score affecting the engine's behaviour.
+**Done when:**
+
+A user can watch a healthy young adult's body shift visibly over ten simulated years under different lifestyles, with per-organ Health changing engine behavior.
 
 ---
 
@@ -210,9 +240,11 @@ Tissue remodeling, body composition, muscle mass and tone, vessel wall health, p
 
 **Status:** ⬜ Not started
 
-Foreign Substance table added to the engine. Beverage and drug libraries. Acute and chronic effects propagated through hormones, organs, and Health. A Night Out and Twenty Years of Smoking scenarios.
+Add the foreign-substance table, beverage/drug libraries, acute effects, chronic effects, and the Night Out / Twenty Years of Smoking scenarios.
 
-**Done when:** Both scenarios run with effects propagating across systems, and a user can compare twenty years of smoking against the same body that quits at year ten.
+**Done when:**
+
+Both scenarios run with effects propagating across systems, and a user can compare twenty years of smoking against the same body quitting at year ten.
 
 ---
 
@@ -220,9 +252,11 @@ Foreign Substance table added to the engine. Beverage and drug libraries. Acute 
 
 **Status:** ⬜ Not started
 
-Expose the multi-worker, multi-individual model the shell has carried from Phase 2. Side-by-side view, shared and per-individual calendars, and overlaid charts. Comparing Different Individuals and Comparing Lifestyles scenarios.
+Expose the multi-individual model carried internally since Phase 2: side-by-side bodies, shared/per-individual calendars, and overlaid charts.
 
-**Done when:** A user can run two to six bodies side by side on the same clock and see them diverge.
+**Done when:**
+
+A user can run two to six bodies side by side on the same clock and see them diverge.
 
 ---
 
@@ -230,19 +264,23 @@ Expose the multi-worker, multi-individual model the shell has carried from Phase
 
 **Status:** ⬜ Not started
 
-Age-dependent engine parameters, life-stage transitions and labelling, age-gating in the event editor, the From Birth scenario.
+Age-dependent engine parameters, life-stage transitions and labels, age-gated event editing, and the From Birth scenario.
 
-**Done when:** The From Birth scenario runs cleanly through life stages with appropriate parameter shifts at each transition.
+**Done when:**
+
+The From Birth scenario runs cleanly through life stages with appropriate parameter shifts at each transition.
 
 ---
 
-## Phase 11 — Recordings, Hormones view, charts, alternative visual styles, scenario sharing
+## Phase 11 — Recordings, Hormones view, charts, visual styles, scenario sharing
 
 **Status:** ⬜ Not started
 
-Recording export (WebM and frame-sequence ZIP). Additional visual styles added alongside the default — exact set decided by design research conducted during this phase. Polish, snapshots, dark mode tuning, unsettled-science flags wired up.
+Recording export, additional views/charts, visual-style switching, dark-mode polish, unsettled-science flags, and shareable scenarios.
 
-**Done when:** A user can export a video clip of any segment of any scenario, switch between visual styles, share scenarios via URL, and see unsettled-science flags throughout.
+**Done when:**
+
+A user can export a clip, switch visual styles, share scenarios by URL, and see unsettled-science flags where the model has alternate hypotheses.
 
 ---
 
@@ -250,28 +288,29 @@ Recording export (WebM and frame-sequence ZIP). Additional visual styles added a
 
 **Status:** ⬜ Not started
 
-First-run walkthrough; README expanded; published to GitHub Pages.
+First-run walkthrough, expanded README/docs, and published user-facing guidance.
 
-**Done when:** A first-time visitor can land on the GitHub Pages site, follow a walkthrough, and reach the Single Hamburger scenario without external help.
+**Done when:**
+
+A first-time visitor can land on the GitHub Pages site, follow a walkthrough, and reach the Single Hamburger scenario without external help.
 
 ---
 
-## Post-v1 (deferred, tracked for future)
+## Post-v1 deferred work
 
-These are described in `design.md` but are not in v1's path:
+These are described in `design.md` but are not on the v1 critical path:
 
-- **Specialized views** — Fat Metabolism, Blood, Liver, Hormone (high-resolution), Brain, Bones, Lymph. Each replaces the Whole Body view for users drilling into one subsystem.
-- **Kids view** — simplified, more abstracted, more cartoon-like presentation layer over the same engine. Even simpler naming, fewer numbers, stronger animations.
-- **Pregnancy and menopause** — life-stage extensions that the v1 sex-hormone scaffolding leaves room for.
-- **More scenarios, more foods, more drugs** — the libraries grow indefinitely; the structural work is in v1.
+- Specialized subsystem views: Fat Metabolism, Blood, Liver, high-resolution Hormones, Brain, Bones, Lymph.
+- Kids view: simplified/cartoon-like presentation over the same engine.
+- Pregnancy and menopause extensions.
+- Larger food/drug/scenario libraries beyond the v1 proving set.
 
 ---
 
 ## Phase changes log
 
-Track substantive changes to the plan here so future-you can see why the order shifted.
-
-- 2026-04-29 — Inserted a new **Phase 2 — Simulation shell, persisted runs, and first state/event view** ahead of the anatomical Whole Body work. Reason: the first app implementation needs a durable mobile-first run shell (Sim Bar, Viewer Bar, history, persistence, event scheduling, and branching replay) before the anatomical rendering layer lands. Renumbered later phases accordingly and narrowed the later history phase to advanced compression / branching / timeline polish rather than first delivery of save-load itself.
-- 2026-04-29 — Chose **Preact** as the reactive UI layer for the app shell and upcoming views. Reason: it stays within the project's lightweight-framework constraint while giving a clean component/state model for the Sim Bar, Viewer Bar, Events pane, and State pane.
-- 2026-04-29 — Clarified two immediate Phase 2 attention areas inside the shell: the **mobile-first layout** and the **event planner**. Expanded the event-planner model from fixed daily/2-day/7-day defaults to an open-ended repeating-cycle system with direct schedule-grid editing, cycle-position indication, and a workspace mode that can take over the whole midsection when planning.
-- 2026-04-30 — Tightened the event-planner and body-status rules to match the current product direction: default planner lanes are now **One-Off** and **Daily** only; longer repeating cycles are explicit custom lanes of arbitrary duration; meals / exercise / drinking / sleep are duration-based minute-grid activities with incremental effects; and the body-status panel family should keep consistent diagram capsules rather than letting oversized trend panels dominate the screen.
+- 2026-04-29 — Inserted Phase 2 before anatomical Whole Body work. Reason: the first app implementation needs a durable mobile-first shell, run model, persistence, event scheduling, history, and branching before the anatomical rendering layer lands.
+- 2026-04-29 — Chose **Preact** as the reactive UI layer. Reason: small enough for the static-site constraint while giving a clean component/state model for shell views and controls.
+- 2026-04-29 — Clarified Phase 2 focus areas: mobile-first layout and event planner. Expanded the planner direction from fixed daily/2-day/7-day defaults to an open-ended repeating-cycle model.
+- 2026-04-30 — Tightened event-planner/body-status rules: default planner lanes are minimal; longer repeating cycles are explicit; activities are duration-based; body-status panels should remain a balanced family rather than oversized trend panels.
+- 2026-05-01 — Cleaned this plan to match the implemented app state. Marked Phase 0.5 research complete, Phase 2 in progress with delivered shell foundations, and moved stale Phase 0 bootstrap instructions out of the active path.
