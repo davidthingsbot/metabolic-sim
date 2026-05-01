@@ -288,34 +288,34 @@ describe('createShellSnapshot', () => {
         id: 'breakfast-at-1800',
         label: 'One-Off meal',
         laneLabel: 'One-Off',
-        startLabel: '0h 30m',
-        endLabel: '1h 00m',
+        startLabel: '00:30',
+        endLabel: '01:00',
         summary: '20.0 g carbs over 30 min',
         status: 'past',
-        offsetPercent: 16.67,
-        widthPercent: 16.67,
+        offsetPercent: 2.08,
+        widthPercent: 2.08,
       },
       {
         id: 'lunch-at-5400',
         label: 'Daily meal',
         laneLabel: 'Daily',
-        startLabel: '1h 30m',
-        endLabel: '2h 00m',
+        startLabel: '01:30',
+        endLabel: '02:00',
         summary: '45.0 g carbs over 30 min',
         status: 'active',
-        offsetPercent: 50,
-        widthPercent: 16.67,
+        offsetPercent: 6.25,
+        widthPercent: 2.08,
       },
       {
         id: 'snack-at-10800',
         label: 'Daily meal',
         laneLabel: 'Daily',
-        startLabel: '3h 00m',
-        endLabel: '3h 20m',
+        startLabel: '03:00',
+        endLabel: '03:20',
         summary: '15.0 g carbs over 20 min',
         status: 'upcoming',
-        offsetPercent: 100,
-        widthPercent: 0,
+        offsetPercent: 12.5,
+        widthPercent: 1.39,
       },
     ]);
     expect(snapshot.bands.footer.eventReadout).toEqual({
@@ -323,5 +323,70 @@ describe('createShellSnapshot', () => {
       mostRecent: 'Most recent: One-Off meal finished at 1h 00m · 20.0 g carbs over 30 min.',
       next: 'Next: Daily meal starts at 3h 00m · 15.0 g carbs over 20 min.',
     });
+  });
+
+  it('separates lifetime event bands from selected-day event spans', () => {
+    const run = createSampleRun();
+    const oneOffLane = run.scheduleLanes.find((lane) => lane.kind === 'one-off');
+    const dailyLane = run.scheduleLanes.find((lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 1440);
+
+    if (!oneOffLane || !dailyLane || dailyLane.kind !== 'repeating-cycle') {
+      throw new Error('Expected one-off and daily lanes');
+    }
+
+    run.activePlaybackTime = 36 * 3600;
+    run.scheduledActivities = [
+      {
+        id: 'breakfast',
+        laneId: oneOffLane.id,
+        type: 'meal',
+        startPlaybackTime: 2 * 86400 + 6 * 3600,
+        durationMinutes: 30,
+        carbsGrams: 20,
+      },
+      {
+        id: 'daily-lunch',
+        laneId: dailyLane.id,
+        type: 'meal',
+        startCycleMinute: 12 * 60,
+        durationMinutes: 45,
+        carbsGrams: 45,
+      },
+    ];
+
+    const snapshot = createShellSnapshot({
+      run,
+      workspace: 'body-status',
+      selectedSystemId: 'whole-body',
+      enabledSubsystemIds: ['blood-system', 'digestive-system'],
+      labelMode: 'plain',
+      theme: 'light',
+      isPlaying: true,
+    });
+
+    expect(snapshot.bands.footer.lifetimeTimelineEvents).toEqual([
+      expect.objectContaining({
+        id: 'daily-lunch-pattern',
+        label: 'Daily meal',
+        repeatKind: 'dense',
+        offsetPercent: 0,
+        widthPercent: 100,
+      }),
+      expect.objectContaining({
+        id: 'breakfast-at-194400',
+        label: 'One-Off meal',
+        repeatKind: 'rare',
+      }),
+    ]);
+    expect(snapshot.bands.footer.mealTimelineEvents).toEqual([
+      expect.objectContaining({
+        id: 'daily-lunch-at-129600',
+        label: 'Daily meal',
+        startLabel: '12:00',
+        endLabel: '12:45',
+        offsetPercent: 50,
+        widthPercent: 3.13,
+      }),
+    ]);
   });
 });

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ComponentChildren, VNode } from 'preact';
 import { ShellFooterView } from './ShellFooterView';
@@ -53,6 +55,28 @@ function createSnapshot(): ShellSnapshot {
         playbackStep: 1,
         checkpointTimes: [0, 1800, 5400, 10800],
         selectedCheckpointIndex: 2,
+        lifetimeTimelineEvents: [
+          {
+            id: 'daily-lunch-pattern',
+            label: 'Daily meal',
+            laneLabel: 'Daily',
+            summary: '45.0 g carbs over 30 min · every day',
+            repeatKind: 'dense',
+            status: 'active',
+            offsetPercent: 0,
+            widthPercent: 100,
+          },
+          {
+            id: 'doctor-visit-at-864000',
+            label: 'One-Off meal',
+            laneLabel: 'One-Off',
+            summary: '20.0 g carbs over 30 min',
+            repeatKind: 'rare',
+            status: 'upcoming',
+            offsetPercent: 0.03,
+            widthPercent: 0.2,
+          },
+        ],
         mealTimelineEvents: [
           {
             id: 'lunch-at-5400',
@@ -127,5 +151,65 @@ describe('ShellFooterView', () => {
     expect(flattenText(readout?.props.children)).toContain('Now: Daily meal is underway');
     expect(flattenText(readout?.props.children)).toContain('Most recent: One-Off meal finished at 1h 00m');
     expect(flattenText(readout?.props.children)).toContain('Next: Daily meal starts at 3h 00m');
+  });
+
+  it('renders a master lifetime timeline and a detailed day timeline', () => {
+    const view = ShellFooterView({
+      snapshot: createSnapshot(),
+      onSetPlaybackTime: () => undefined,
+      onStepPlayback: () => undefined,
+      onTogglePlaying: () => undefined,
+      onBranchPlaybackTime: () => undefined,
+    });
+
+    const master = findByClassName(view, 'timeline-scale timeline-scale-lifetime');
+    const detail = findByClassName(view, 'timeline-scale timeline-scale-day');
+    const windowMarker = findByClassName(view, 'timeline-detail-window');
+    const masterNow = findByClassName(view, 'timeline-now-marker timeline-now-marker-lifetime');
+    const dayNow = findByClassName(view, 'timeline-now-marker timeline-now-marker-day');
+
+    expect(flattenText(master?.props.children)).toContain('Lifetime');
+    expect(flattenText(master?.props.children)).toContain('Year 0');
+    expect(flattenText(master?.props.children)).toContain('Year 80');
+    expect(flattenText(detail?.props.children)).toContain('Selected day');
+    expect(flattenText(detail?.props.children)).toContain('00:00');
+    expect(flattenText(detail?.props.children)).toContain('24:00');
+    expect(windowMarker).toBeDefined();
+    expect(masterNow).toBeDefined();
+    expect(dayNow).toBeDefined();
+    expect((masterNow?.props as { style?: string } | undefined)?.style).toBe('left:0%;');
+    expect((dayNow?.props as { style?: string } | undefined)?.style).toBe('left:6.25%;');
+  });
+
+  it('draws dense daily patterns on the lifetime timeline and all selected-day events as duration blocks', () => {
+    const view = ShellFooterView({
+      snapshot: createSnapshot(),
+      onSetPlaybackTime: () => undefined,
+      onStepPlayback: () => undefined,
+      onTogglePlaying: () => undefined,
+      onBranchPlaybackTime: () => undefined,
+    });
+
+    const master = findByClassName(view, 'timeline-scale timeline-scale-lifetime');
+    const dailyBand = findByClassName(master, 'timeline-lifetime-event timeline-lifetime-event-dense timeline-lifetime-event-active');
+    const rareEvent = findByClassName(master, 'timeline-lifetime-event timeline-lifetime-event-rare timeline-lifetime-event-upcoming');
+    const selectedDayEvent = findByClassName(view, 'timeline-meal-event timeline-meal-event-active');
+
+    expect(flattenText(dailyBand?.props.children)).toContain('Daily meal');
+    expect((dailyBand?.props as { style?: string } | undefined)?.style).toBe('left:0%;width:100%;');
+    expect(flattenText(rareEvent?.props.children)).toContain('One-Off meal');
+    expect(flattenText(selectedDayEvent?.props.children)).toContain('Daily meal');
+    expect(flattenText(selectedDayEvent?.props.children)).toContain('1h 30m–2h 00m');
+  });
+
+  it('allocates footer width to controls first and lets timelines take the remaining width', () => {
+    const stylesheet = readFileSync(resolve(__dirname, '../../style.css'), 'utf8');
+    const footerRule = stylesheet.match(/\.footer-controls\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);[\s\S]*?\}/);
+    const timelineBlockRule = stylesheet.match(/\.timeline-block\s*\{[\s\S]*?min-width:\s*([^;]+);[\s\S]*?\}/);
+    const timelineScaleRule = stylesheet.match(/\.timeline-scale\s*\{[\s\S]*?border-top:\s*([^;]+);[\s\S]*?\}/);
+
+    expect(footerRule?.[1]?.trim()).toBe('auto minmax(0, 1fr)');
+    expect(timelineBlockRule?.[1]?.trim()).toBe('0');
+    expect(timelineScaleRule?.[1]?.trim()).toBe('2px solid var(--fg)');
   });
 });

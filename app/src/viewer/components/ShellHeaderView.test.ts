@@ -53,6 +53,7 @@ function createSnapshot(): ShellSnapshot {
         playbackStep: 1,
         checkpointTimes: [0],
         selectedCheckpointIndex: 0,
+        lifetimeTimelineEvents: [],
         mealTimelineEvents: [],
         eventReadout: {
           current: 'Now: No scheduled meal is active.',

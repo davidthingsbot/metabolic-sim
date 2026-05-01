@@ -203,6 +203,19 @@ describe('ShellMidsection workspace visibility', () => {
     expect(source).not.toContain('Create new meal');
   });
 
+  it('splits the event editor into settings and detail-selector halves', () => {
+    const source = readFileSync(resolve(__dirname, './ShellMidsectionView.ts'), 'utf8');
+    const stylesheet = readFileSync(resolve(__dirname, '../../style.css'), 'utf8');
+    const editorBodyRule = stylesheet.match(/\.planner-editor-body\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);[\s\S]*?\}/);
+    const mobileEditorBodyRule = stylesheet.match(/@media \(max-width: 639px\) \{[\s\S]*?\.planner-editor-body\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);[\s\S]*?\}/);
+
+    expect(source).toContain('planner-editor-settings');
+    expect(source).toContain('planner-detail-selector');
+    expect(source).toContain('Details');
+    expect(editorBodyRule?.[1]?.trim()).toBe('minmax(0, 1fr) minmax(0, 1fr)');
+    expect(mobileEditorBodyRule?.[1]?.trim()).toBe('minmax(0, 1fr)');
+  });
+
   it('stacks body-status capsules before they become too narrow', () => {
     const stylesheet = readFileSync(resolve(__dirname, '../../style.css'), 'utf8');
     const overviewRule = stylesheet.match(/\.overview-bar\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);[\s\S]*?\}/);

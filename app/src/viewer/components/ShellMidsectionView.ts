@@ -373,54 +373,62 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
             ]),
             h('form', { class: 'planner-editor planner-form detail-card' + (selectedMeal ? ' planner-form-editing' : ''), onSubmit: submitPlannerMeal }, [
               h('h3', null, selectedMeal ? 'Edit event' : 'Add event'),
-              h('div', { class: 'planner-grid' }, [
-                h('label', { class: 'planner-field' }, [
-                  h('span', null, 'Day offset'),
-                  h('input', {
-                    type: 'number',
-                    min: 0,
-                    value: day,
-                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDay(Number(event.currentTarget.value)),
-                  }),
+              h('div', { class: 'planner-editor-body' }, [
+                h('div', { class: 'planner-editor-settings' }, [
+                  h('div', { class: 'planner-grid' }, [
+                    h('label', { class: 'planner-field' }, [
+                      h('span', null, 'Day offset'),
+                      h('input', {
+                        type: 'number',
+                        min: 0,
+                        value: day,
+                        onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDay(Number(event.currentTarget.value)),
+                      }),
+                    ]),
+                    h('label', { class: 'planner-field' }, [
+                      h('span', null, selectedLane?.placementLabel ?? 'Start time'),
+                      h('input', {
+                        type: 'time',
+                        value: timeOfDay,
+                        onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setTimeOfDay(event.currentTarget.value),
+                      }),
+                    ]),
+                  ]),
+                  h('div', { class: 'planner-grid' }, [
+                    h('label', { class: 'planner-field' }, [
+                      h('span', null, 'Duration (min)'),
+                      h('input', {
+                        type: 'number',
+                        min: 1,
+                        value: durationMinutes,
+                        onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDurationMinutes(Number(event.currentTarget.value)),
+                      }),
+                    ]),
+                    h('label', { class: 'planner-field' }, [
+                      h('span', null, 'Carbs (g)'),
+                      h('input', {
+                        type: 'number',
+                        min: 1,
+                        step: 1,
+                        value: carbsGrams,
+                        onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setCarbsGrams(Number(event.currentTarget.value)),
+                      }),
+                    ]),
+                  ]),
+                  h('div', { class: 'planner-action-row' }, [
+                    h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
+                    selectedMeal
+                      ? h('button', { class: 'control-chip', type: 'button', onClick: clearSelection }, 'Cancel edit')
+                      : null,
+                    selectedMeal
+                      ? h('button', { class: 'control-chip', type: 'button', onClick: removeSelectedMeal }, 'Remove meal')
+                      : null,
+                  ]),
                 ]),
-                h('label', { class: 'planner-field' }, [
-                  h('span', null, selectedLane?.placementLabel ?? 'Start time'),
-                  h('input', {
-                    type: 'time',
-                    value: timeOfDay,
-                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setTimeOfDay(event.currentTarget.value),
-                  }),
+                h('section', { class: 'planner-detail-selector', 'aria-label': 'Event details' }, [
+                  h('h4', null, 'Details'),
+                  h('p', null, 'Food and activity selectors will appear here.'),
                 ]),
-              ]),
-              h('div', { class: 'planner-grid' }, [
-                h('label', { class: 'planner-field' }, [
-                  h('span', null, 'Duration (min)'),
-                  h('input', {
-                    type: 'number',
-                    min: 1,
-                    value: durationMinutes,
-                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setDurationMinutes(Number(event.currentTarget.value)),
-                  }),
-                ]),
-                h('label', { class: 'planner-field' }, [
-                  h('span', null, 'Carbs (g)'),
-                  h('input', {
-                    type: 'number',
-                    min: 1,
-                    step: 1,
-                    value: carbsGrams,
-                    onInput: (event: JSX.TargetedEvent<HTMLInputElement, Event>) => setCarbsGrams(Number(event.currentTarget.value)),
-                  }),
-                ]),
-              ]),
-              h('div', { class: 'planner-action-row' }, [
-                h('button', { class: 'control-chip', type: 'submit' }, selectedMeal ? 'Save meal' : 'Create meal'),
-                selectedMeal
-                  ? h('button', { class: 'control-chip', type: 'button', onClick: clearSelection }, 'Cancel edit')
-                  : null,
-                selectedMeal
-                  ? h('button', { class: 'control-chip', type: 'button', onClick: removeSelectedMeal }, 'Remove meal')
-                  : null,
               ]),
             ]),
           ])
