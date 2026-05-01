@@ -41,6 +41,12 @@ function formatPlannerMinuteOfDay(totalMinutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
+const plannerDayWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+
+export function formatPlannerDayLabel(day: number): string {
+  return `Day ${plannerDayWords[day] ?? day}`;
+}
+
 export function createPlannerDraftFromTimelineSlot(day: number, hour: number): { day: number; timeOfDay: string } {
   return {
     day,
@@ -54,7 +60,8 @@ export function createPlannerDraftFromTimelinePosition(day: number, offsetY: num
   }
 
   const progress = Math.max(0, Math.min(offsetY / height, 1));
-  const minuteOfDay = Math.min(1439, Math.round(progress * 1440));
+  const roundedMinuteOfDay = Math.round((progress * 1440) / 15) * 15;
+  const minuteOfDay = Math.min(1425, roundedMinuteOfDay);
   return {
     day,
     timeOfDay: formatPlannerMinuteOfDay(minuteOfDay),
@@ -293,7 +300,7 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
           ])
         : null,
     ]),
-    end: h('section', { class: 'detail-field' }, [
+    end: h('section', { class: snapshot.workspace.value === 'event-planner' ? 'detail-field detail-field-planner' : 'detail-field' }, [
       snapshot.bands.midsection.title || snapshot.bands.midsection.copy || snapshot.workspace.value !== 'event-planner'
         ? h('div', { class: 'detail-heading' }, [
             snapshot.workspace.value === 'body-status' ? null : h('p', { class: 'eyebrow' }, snapshot.workspace.label),
@@ -327,33 +334,27 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
         ? h('section', { class: 'planner-panel' }, [
             h('div', { class: 'planner-timeline detail-card' }, [
               h('div', { class: 'planner-timeline-scroll' }, [
-                h('div', { class: 'planner-timeline-grid', style: `--planner-day-count: ${visiblePlannerDays.length};` }, [
-                  h('div', { class: 'planner-time-axis' }, [
-                    ...Array.from({ length: 24 }, (_, hour) =>
-                      h('div', { key: `tick-${hour}`, class: 'planner-time-tick' }, [
-                        h('span', { class: 'planner-time-label' }, formatPlannerHour(hour)),
-                        h('span', { class: 'planner-time-mark' }),
-                      ]),
-                    ),
-                  ]),
-                  ...visiblePlannerDays.map((visibleDay) =>
+                h('div', { class: 'planner-timeline-grid', style: `--planner-day-count: ${visiblePlannerDays.length};` },
+                  visiblePlannerDays.map((visibleDay) =>
                     h('div', { key: `day-${visibleDay}`, class: 'planner-day-column' }, [
-                      h('div', { class: 'planner-day-heading' }, `D${visibleDay}`),
+                      h('div', { class: 'planner-day-heading' }, formatPlannerDayLabel(visibleDay)),
                       h('button', {
                         class: 'planner-day-track',
                         type: 'button',
                         onClick: (event: JSX.TargetedMouseEvent<HTMLButtonElement>) => selectPlannerTimelinePosition(visibleDay, event),
                       }, [
-                        ...Array.from({ length: 24 }, (_, hour) =>
-                          h('span', {
-                            key: `grid-${visibleDay}-${hour}`,
-                            class: hour === 0 ? 'planner-track-tick planner-track-tick-start' : 'planner-track-tick',
-                            style: `top: ${(hour / 24) * 100}%;`,
-                          }),
+                        h('span', { class: 'planner-day-line', 'aria-hidden': 'true' }),
+                        h('span', { class: 'planner-hour-rows', 'aria-hidden': 'true' },
+                          Array.from({ length: 24 }, (_, hour) =>
+                            h('span', { key: `grid-${visibleDay}-${hour}`, class: 'planner-hour-row' }, [
+                              h('span', { class: 'planner-hour-label' }, formatPlannerHour(hour)),
+                              h('span', { class: 'planner-hour-check' }),
+                            ]),
+                          ),
                         ),
                         ...(selectedLane ? createPlannerDayMeals(selectedLane.id, snapshot.planner.mealOptions, visibleDay) : []).map((meal) => {
                           const placement = createPlannerEventPlacement(meal.timeOfDay, meal.durationMinutes);
-                          return h('div', {
+                          return h('span', {
                             key: meal.id,
                             class: 'planner-track-event planner-track-event-meal' + (meal.id === selectedMealId ? ' planner-track-event-selected' : ''),
                             title: meal.label,
@@ -367,21 +368,11 @@ export const ShellMidsectionView: FunctionalComponent<ShellMidsectionViewProps> 
                       ]),
                     ]),
                   ),
-                ]),
+                ),
               ]),
             ]),
             h('form', { class: 'planner-editor planner-form detail-card' + (selectedMeal ? ' planner-form-editing' : ''), onSubmit: submitPlannerMeal }, [
               h('h3', null, selectedMeal ? 'Edit event' : 'Add event'),
-              h('label', { class: 'planner-field' }, [
-                h('span', null, 'Existing meals'),
-                h('select', {
-                  value: selectedMealId,
-                  onInput: (event: JSX.TargetedEvent<HTMLSelectElement, Event>) => setSelectedMealId(event.currentTarget.value),
-                }, [
-                  h('option', { value: '' }, 'Create new meal'),
-                  ...snapshot.planner.mealOptions.map((meal) => h('option', { key: meal.id, value: meal.id }, meal.label)),
-                ]),
-              ]),
               h('div', { class: 'planner-grid' }, [
                 h('label', { class: 'planner-field' }, [
                   h('span', null, 'Day offset'),

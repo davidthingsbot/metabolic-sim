@@ -4,4 +4,7 @@ import { defineConfig } from 'vite';
 // The GITHUB_ACTIONS env var is true only when running inside the deploy workflow.
 export default defineConfig({
   base: process.env.GITHUB_ACTIONS ? '/metabolic-sim/' : '/',
+  server: {
+    allowedHosts: ['dw-x1pro-linux'],
+  },
 });
