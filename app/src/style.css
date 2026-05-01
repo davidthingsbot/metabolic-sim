@@ -684,13 +684,15 @@ h3 {
   top: 0;
   display: grid;
   gap: 0.1rem;
-  min-width: 0.45rem;
-  min-height: 1rem;
+  min-width: 0.75rem;
+  min-height: 1.35rem;
   padding: 0;
-  border-radius: 2px;
-  border: 1px solid var(--border);
-  background: var(--panel-strong);
+  border-radius: 3px;
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--bg), 0 0.15rem 0.35rem rgba(0, 0, 0, 0.18);
   overflow: hidden;
+  z-index: 1;
 }
 
 .timeline-meal-event-past {
@@ -699,11 +701,11 @@ h3 {
 
 .timeline-meal-event-active {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--accent);
 }
 
 .timeline-meal-event-upcoming {
-  border-style: dashed;
+  background: var(--panel-strong);
 }
 
 .timeline-meal-event-label,
@@ -719,8 +721,7 @@ h3 {
   white-space: nowrap;
 }
 
-.timeline-meal-event-time,
-.timeline-event-readout {
+.timeline-meal-event-time {
   color: var(--muted);
 }
 
@@ -730,16 +731,6 @@ h3 {
   height: 1px;
   opacity: 0;
   pointer-events: none;
-}
-
-.timeline-event-readout {
-  display: grid;
-  gap: 0.3rem;
-  font-size: 0.82rem;
-}
-
-.timeline-event-readout p {
-  margin: 0;
 }
 
 @media (max-width: 639px) {

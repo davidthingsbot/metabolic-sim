@@ -21,6 +21,8 @@ const LEGACY_CYCLE_DURATION_MINUTES: Record<LegacyScheduleLaneKind, number> = {
   weekly: 10080,
 };
 
+const DEFAULT_INITIAL_PLAYBACK_TIME_SECONDS = 25 * 365 * 24 * 60 * 60;
+
 function createDefaultScheduleLanes(): ScheduleLane[] {
   return [
     { id: createId('lane'), kind: 'one-off', name: 'One-Off' },
@@ -71,8 +73,9 @@ function createScheduledMealActivity(laneId: string, options: NonNullable<Create
   };
 }
 
-function createDefaultIndividuals(): IndividualRunState[] {
+function createDefaultIndividuals(initialPlaybackTime: number): IndividualRunState[] {
   const state = createInitialState();
+  state.simulatedTime = initialPlaybackTime;
   return [
     {
       id: createId('individual'),
@@ -237,7 +240,7 @@ export function ensureRunHistory(run: Run): Run {
 
 export function createRun(options: CreateRunOptions): Run {
   const scheduleLanes = createDefaultScheduleLanes();
-  const individuals = createDefaultIndividuals();
+  const individuals = createDefaultIndividuals(DEFAULT_INITIAL_PLAYBACK_TIME_SECONDS);
   const defaultRepeatingLane = scheduleLanes.find((lane) => lane.kind === 'repeating-cycle' && lane.cycleDurationMinutes === 1440);
 
   if (!defaultRepeatingLane || defaultRepeatingLane.kind !== 'repeating-cycle') {
@@ -254,7 +257,7 @@ export function createRun(options: CreateRunOptions): Run {
     individuals,
     scheduleLanes,
     scheduledActivities,
-    activePlaybackTime: 0,
-    history: createInitialHistory(individuals, 0),
+    activePlaybackTime: DEFAULT_INITIAL_PLAYBACK_TIME_SECONDS,
+    history: createInitialHistory(individuals, DEFAULT_INITIAL_PLAYBACK_TIME_SECONDS),
   });
 }

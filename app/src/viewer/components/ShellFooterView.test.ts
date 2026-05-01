@@ -134,7 +134,7 @@ function findByClassName(node: ComponentChildren, className: string): VNode | un
 }
 
 describe('ShellFooterView', () => {
-  it('renders meal markers and explanatory readout from the footer snapshot', () => {
+  it('renders meal markers without explanatory text underneath the timelines', () => {
     const view = ShellFooterView({
       snapshot: createSnapshot(),
       onSetPlaybackTime: () => undefined,
@@ -148,9 +148,10 @@ describe('ShellFooterView', () => {
 
     expect(flattenText(marker?.props.children)).toContain('Daily meal');
     expect(flattenText(marker?.props.children)).toContain('1h 30m–2h 00m');
-    expect(flattenText(readout?.props.children)).toContain('Now: Daily meal is underway');
-    expect(flattenText(readout?.props.children)).toContain('Most recent: One-Off meal finished at 1h 00m');
-    expect(flattenText(readout?.props.children)).toContain('Next: Daily meal starts at 3h 00m');
+    expect(readout).toBeUndefined();
+    expect(flattenText((view as VNode).props.children)).not.toContain('Now: Daily meal is underway');
+    expect(flattenText((view as VNode).props.children)).not.toContain('Most recent: One-Off meal finished at 1h 00m');
+    expect(flattenText((view as VNode).props.children)).not.toContain('Next: Daily meal starts at 3h 00m');
   });
 
   it('renders a master lifetime timeline and a detailed day timeline', () => {
@@ -211,5 +212,17 @@ describe('ShellFooterView', () => {
     expect(footerRule?.[1]?.trim()).toBe('auto minmax(0, 1fr)');
     expect(timelineBlockRule?.[1]?.trim()).toBe('0');
     expect(timelineScaleRule?.[1]?.trim()).toBe('2px solid var(--fg)');
+  });
+
+  it('styles selected-day event rectangles as visible solid blocks', () => {
+    const stylesheet = readFileSync(resolve(__dirname, '../../style.css'), 'utf8');
+    const eventRule = stylesheet.match(/\.timeline-meal-event\s*\{[\s\S]*?min-height:\s*([^;]+);[\s\S]*?background:\s*([^;]+);[\s\S]*?\}/);
+    const activeRule = stylesheet.match(/\.timeline-meal-event-active\s*\{[\s\S]*?background:\s*([^;]+);[\s\S]*?\}/);
+    const upcomingRule = stylesheet.match(/\.timeline-meal-event-upcoming\s*\{[\s\S]*?background:\s*([^;]+);[\s\S]*?\}/);
+
+    expect(eventRule?.[1]?.trim()).toBe('1.35rem');
+    expect(eventRule?.[2]?.trim()).toBe('var(--accent-soft)');
+    expect(activeRule?.[1]?.trim()).toBe('var(--accent)');
+    expect(upcomingRule?.[1]?.trim()).toBe('var(--panel-strong)');
   });
 });

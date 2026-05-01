@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { createRun } from './runFactory';
 import { branchRunFromSnapshot } from './branchRun';
 
+const TWENTY_FIVE_YEARS_SECONDS = 788_400_000;
+
 describe('branchRunFromSnapshot', () => {
   it('creates a new run from an existing recorded checkpoint and captures lineage metadata', () => {
     const source = createRun({ name: 'Source Run' });
@@ -57,12 +59,12 @@ describe('branchRunFromSnapshot', () => {
     const branched = branchRunFromSnapshot({
       sourceRun: source,
       branchedName: 'Branch',
-      snapshotTime: 0,
+      snapshotTime: source.activePlaybackTime,
     });
 
     branched.individuals[0].state.simulatedTime = 42;
 
-    expect(source.individuals[0].state.simulatedTime).toBe(0);
+    expect(source.individuals[0].state.simulatedTime).toBe(TWENTY_FIVE_YEARS_SECONDS);
   });
 
   it('preserves the schedule-lane structure in the branched run', () => {
@@ -71,7 +73,7 @@ describe('branchRunFromSnapshot', () => {
     const branched = branchRunFromSnapshot({
       sourceRun: source,
       branchedName: 'Branch',
-      snapshotTime: 0,
+      snapshotTime: source.activePlaybackTime,
     });
 
     expect(branched.scheduleLanes.map((lane) => lane.kind)).toEqual(

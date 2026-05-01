@@ -8,7 +8,11 @@ function createSampleRun() {
   run.individuals[0].state.substances.glucose.cells = 18.6;
   run.individuals[0].state.substances.glucose.blood = 6.2;
   run.individuals[0].state.hormones.insulin = 18;
+  run.individuals[0].state.simulatedTime = 5400;
   run.activePlaybackTime = 5400;
+  run.history = {
+    checkpoints: [{ playbackTime: 0, individuals: structuredClone(run.individuals) }],
+  };
   return run;
 }
 

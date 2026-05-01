@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createRun, ensureRunHistory } from './runFactory';
 
+const TWENTY_FIVE_YEARS_SECONDS = 788_400_000;
+
 describe('createRun', () => {
   it('creates a named run with one default individual', () => {
     const run = createRun({ name: 'Single Hamburger' });
@@ -8,11 +10,11 @@ describe('createRun', () => {
     expect(run.name).toBe('Single Hamburger');
     expect(run.individuals).toHaveLength(1);
     expect(run.individuals[0].id).toBeTruthy();
-    expect(run.individuals[0].state.simulatedTime).toBe(0);
-    expect(run.activePlaybackTime).toBe(0);
+    expect(run.individuals[0].state.simulatedTime).toBe(TWENTY_FIVE_YEARS_SECONDS);
+    expect(run.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS);
     expect(run.history.checkpoints).toEqual([
       {
-        playbackTime: 0,
+        playbackTime: TWENTY_FIVE_YEARS_SECONDS,
         individuals: run.individuals,
       },
     ]);
@@ -62,7 +64,7 @@ describe('createRun', () => {
     ]);
     expect(run.history.checkpoints).toEqual([
       {
-        playbackTime: 0,
+        playbackTime: TWENTY_FIVE_YEARS_SECONDS,
         individuals: run.individuals,
       },
     ]);
@@ -79,7 +81,7 @@ describe('createRun', () => {
 
     expect(normalizedRun.history.checkpoints).toEqual([
       {
-        playbackTime: 0,
+        playbackTime: TWENTY_FIVE_YEARS_SECONDS,
         individuals: normalizedRun.individuals,
       },
     ]);

@@ -142,10 +142,5 @@ export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({
           }
         },
       }),
-      h('div', { class: 'timeline-event-readout' }, [
-        h('p', null, snapshot.bands.footer.eventReadout.current),
-        h('p', null, snapshot.bands.footer.eventReadout.mostRecent),
-        h('p', null, snapshot.bands.footer.eventReadout.next),
-      ]),
     ]),
   ]);

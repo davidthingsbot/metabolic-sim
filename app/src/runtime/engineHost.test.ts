@@ -4,6 +4,8 @@ import { createRun } from '../runs/runFactory';
 import { createRunRepository, type DocumentStore, type RunRepository } from '../persistence/runRepository';
 import { createEngineHost } from './engineHost';
 
+const TWENTY_FIVE_YEARS_SECONDS = 788_400_000;
+
 class InMemoryDocumentStore implements DocumentStore {
   private readonly documents = new Map<string, unknown>();
 
@@ -36,7 +38,7 @@ class DelayedRunRepository implements RunRepository {
   }
 
   async saveRun(run: ReturnType<typeof createRun>): Promise<void> {
-    if (run.activePlaybackTime === 300) {
+    if (run.activePlaybackTime === TWENTY_FIVE_YEARS_SECONDS + 300) {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     this.activeRun = structuredClone(run);
@@ -124,32 +126,32 @@ describe('createEngineHost', () => {
     });
 
     await host.updateActiveRun((draft) => {
-      draft.activePlaybackTime = 300;
-      draft.individuals[0].state.simulatedTime = 300;
+      draft.activePlaybackTime = TWENTY_FIVE_YEARS_SECONDS + 300;
+      draft.individuals[0].state.simulatedTime = TWENTY_FIVE_YEARS_SECONDS + 300;
       draft.individuals[0].state.substances.glucose.blood = 7.5;
     });
     await host.recordHistoryCheckpoint();
 
     await host.updateActiveRun((draft) => {
-      draft.activePlaybackTime = 600;
-      draft.individuals[0].state.simulatedTime = 600;
+      draft.activePlaybackTime = TWENTY_FIVE_YEARS_SECONDS + 600;
+      draft.individuals[0].state.simulatedTime = TWENTY_FIVE_YEARS_SECONDS + 600;
       draft.individuals[0].state.substances.glucose.blood = 9.1;
     });
     await host.recordHistoryCheckpoint();
 
     await host.updateActiveRun((draft) => {
-      draft.activePlaybackTime = 900;
-      draft.individuals[0].state.simulatedTime = 900;
+      draft.activePlaybackTime = TWENTY_FIVE_YEARS_SECONDS + 900;
+      draft.individuals[0].state.simulatedTime = TWENTY_FIVE_YEARS_SECONDS + 900;
       draft.individuals[0].state.substances.glucose.blood = 11.2;
     });
 
-    await host.restorePlaybackTime(300);
+    await host.restorePlaybackTime(TWENTY_FIVE_YEARS_SECONDS + 300);
 
     const snapshot = host.getSnapshot();
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
-    expect(snapshot.activeRun.individuals[0].state.simulatedTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
+    expect(snapshot.activeRun.individuals[0].state.simulatedTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.individuals[0].state.substances.glucose.blood).toBe(7.5);
-    expect(snapshot.activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0, 300, 600]);
+    expect(snapshot.activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS, TWENTY_FIVE_YEARS_SECONDS + 300, TWENTY_FIVE_YEARS_SECONDS + 600]);
   });
 
   it('backfills history for older persisted runs that did not yet have checkpoints', async () => {
@@ -164,7 +166,7 @@ describe('createEngineHost', () => {
       createDefaultRun: () => createRun({ name: 'Fallback Run' }),
     });
 
-    expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([0]);
+    expect(host.getSnapshot().activeRun.history.checkpoints.map((checkpoint) => checkpoint.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS]);
   });
 
   it('steps playback on the one-minute clock, applying only each active meal minute and persisting minute checkpoints', async () => {
@@ -172,7 +174,7 @@ describe('createEngineHost', () => {
     const seededRun = createRun({
       name: 'Stepping Run',
       initialMeal: {
-        startPlaybackTime: 0,
+        startPlaybackTime: TWENTY_FIVE_YEARS_SECONDS,
         durationMinutes: 5,
         carbsGrams: 50,
       },
@@ -193,22 +195,22 @@ describe('createEngineHost', () => {
     await host.stepPlayback(300);
 
     const snapshot = host.getSnapshot();
-    const checkpoint = snapshot.activeRun.history.checkpoints.find((entry) => entry.playbackTime === 300);
+    const checkpoint = snapshot.activeRun.history.checkpoints.find((entry) => entry.playbackTime === TWENTY_FIVE_YEARS_SECONDS + 300);
 
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
     expect(checkpoint?.individuals[0].state).toEqual(expectedState);
-    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS, TWENTY_FIVE_YEARS_SECONDS + 60, TWENTY_FIVE_YEARS_SECONDS + 120, TWENTY_FIVE_YEARS_SECONDS + 180, TWENTY_FIVE_YEARS_SECONDS + 240, TWENTY_FIVE_YEARS_SECONDS + 300]);
     await expect(repository.loadActiveRun()).resolves.toMatchObject({
-      activePlaybackTime: 300,
+      activePlaybackTime: TWENTY_FIVE_YEARS_SECONDS + 300,
       history: {
         checkpoints: [
-          expect.objectContaining({ playbackTime: 0 }),
-          expect.objectContaining({ playbackTime: 60 }),
-          expect.objectContaining({ playbackTime: 120 }),
-          expect.objectContaining({ playbackTime: 180 }),
-          expect.objectContaining({ playbackTime: 240 }),
-          expect.objectContaining({ playbackTime: 300 }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS + 60 }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS + 120 }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS + 180 }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS + 240 }),
+          expect.objectContaining({ playbackTime: TWENTY_FIVE_YEARS_SECONDS + 300 }),
         ],
       },
     });
@@ -259,7 +261,7 @@ describe('createEngineHost', () => {
     await host.stepPlayback(300);
 
     const snapshot = host.getSnapshot();
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
   });
 
@@ -300,7 +302,7 @@ describe('createEngineHost', () => {
     await host.stepPlayback(300);
     await host.createMealActivity({
       laneId: host.getSnapshot().activeRun.scheduleLanes.find((lane) => lane.kind === 'one-off')?.id ?? '',
-      startMinute: 0,
+      startMinute: TWENTY_FIVE_YEARS_SECONDS / 60,
       durationMinutes: 5,
       carbsGrams: 50,
     });
@@ -313,17 +315,17 @@ describe('createEngineHost', () => {
       step(expectedState, 60);
     }
 
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.scheduledActivities).toEqual([
       expect.objectContaining({
         type: 'meal',
-        startPlaybackTime: 0,
+        startPlaybackTime: TWENTY_FIVE_YEARS_SECONDS,
         durationMinutes: 5,
         carbsGrams: 50,
       }),
     ]);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
-    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS, TWENTY_FIVE_YEARS_SECONDS + 60, TWENTY_FIVE_YEARS_SECONDS + 120, TWENTY_FIVE_YEARS_SECONDS + 180, TWENTY_FIVE_YEARS_SECONDS + 240, TWENTY_FIVE_YEARS_SECONDS + 300]);
     expect(persistedRun?.scheduledActivities).toEqual(snapshot.activeRun.scheduledActivities);
     expect(persistedRun?.individuals[0].state).toEqual(expectedState);
   });
@@ -350,7 +352,7 @@ describe('createEngineHost', () => {
       id: 'editable-meal',
       laneId: oneOffLane.id,
       type: 'meal',
-      startPlaybackTime: 0,
+      startPlaybackTime: TWENTY_FIVE_YEARS_SECONDS,
       durationMinutes: 5,
       carbsGrams: 50,
     }];
@@ -365,7 +367,7 @@ describe('createEngineHost', () => {
     await host.stepPlayback(300);
     await host.updateMealActivity('editable-meal', {
       laneId: customLane.id,
-      startMinute: 1,
+      startMinute: 1441,
       durationMinutes: 2,
       carbsGrams: 20,
     });
@@ -381,19 +383,19 @@ describe('createEngineHost', () => {
     step(expectedState, 60);
     step(expectedState, 60);
 
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.scheduledActivities).toEqual([
       {
         id: 'editable-meal',
         laneId: customLane.id,
         type: 'meal',
-        startCycleMinute: 1,
+        startCycleMinute: 1441,
         durationMinutes: 2,
         carbsGrams: 20,
       },
     ]);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
-    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS, TWENTY_FIVE_YEARS_SECONDS + 60, TWENTY_FIVE_YEARS_SECONDS + 120, TWENTY_FIVE_YEARS_SECONDS + 180, TWENTY_FIVE_YEARS_SECONDS + 240, TWENTY_FIVE_YEARS_SECONDS + 300]);
     expect(persistedRun?.scheduledActivities).toEqual(snapshot.activeRun.scheduledActivities);
     expect(persistedRun?.individuals[0].state).toEqual(expectedState);
   });
@@ -411,7 +413,7 @@ describe('createEngineHost', () => {
       id: 'removable-meal',
       laneId: oneOffLane.id,
       type: 'meal',
-      startPlaybackTime: 0,
+      startPlaybackTime: TWENTY_FIVE_YEARS_SECONDS,
       durationMinutes: 5,
       carbsGrams: 50,
     }];
@@ -433,10 +435,10 @@ describe('createEngineHost', () => {
       step(expectedState, 60);
     }
 
-    expect(snapshot.activeRun.activePlaybackTime).toBe(300);
+    expect(snapshot.activeRun.activePlaybackTime).toBe(TWENTY_FIVE_YEARS_SECONDS + 300);
     expect(snapshot.activeRun.scheduledActivities).toEqual([]);
     expect(snapshot.activeRun.individuals[0].state).toEqual(expectedState);
-    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(snapshot.activeRun.history.checkpoints.map((entry) => entry.playbackTime)).toEqual([TWENTY_FIVE_YEARS_SECONDS, TWENTY_FIVE_YEARS_SECONDS + 60, TWENTY_FIVE_YEARS_SECONDS + 120, TWENTY_FIVE_YEARS_SECONDS + 180, TWENTY_FIVE_YEARS_SECONDS + 240, TWENTY_FIVE_YEARS_SECONDS + 300]);
     expect(persistedRun?.scheduledActivities).toEqual([]);
     expect(persistedRun?.individuals[0].state).toEqual(snapshot.activeRun.individuals[0].state);
   });
