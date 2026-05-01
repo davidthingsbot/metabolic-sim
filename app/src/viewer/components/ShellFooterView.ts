@@ -6,6 +6,7 @@ export interface ShellFooterViewProps {
   onSetPlaybackTime: (playbackTime: number) => void;
   onStepPlayback: () => void;
   onTogglePlaying: () => void;
+  onCyclePlaybackSpeed: () => void;
   onBranchPlaybackTime: (playbackTime: number) => void;
 }
 
@@ -67,15 +68,18 @@ export const ShellFooterView: FunctionalComponent<ShellFooterViewProps> = ({
   onSetPlaybackTime,
   onStepPlayback,
   onTogglePlaying,
+  onCyclePlaybackSpeed,
   onBranchPlaybackTime,
 }) =>
-  h('div', { class: 'footer-controls' }, [
+  h('div', { class: 'footer-controls', style: `--numeric-animation-duration: ${snapshot.bands.footer.numericalAnimationMs}ms;` }, [
     h('div', { class: 'control-cluster' }, [
       h('span', { class: 'control-label' }, 'Experiment'),
+      h('strong', { class: 'simulator-timestamp animated-number' }, snapshot.bands.footer.exactTimestampLabel),
       h('div', { class: 'chip-row' }, [
         h('button', { class: snapshot.bands.footer.isPlaying ? 'control-chip active' : 'control-chip', type: 'button', onClick: onTogglePlaying },
           snapshot.bands.footer.isPlaying ? 'Pause' : 'Play',
         ),
+        h('button', { class: 'control-chip', type: 'button', onClick: onCyclePlaybackSpeed }, snapshot.bands.footer.playbackSpeedLabel),
         h('button', { class: 'control-chip', type: 'button', onClick: onStepPlayback }, 'Step'),
         h(
           'button',

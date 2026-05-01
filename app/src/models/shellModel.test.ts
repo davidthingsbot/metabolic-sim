@@ -167,14 +167,18 @@ function createStubShellStateHost() {
     enabledSubsystemIds: string[];
     theme: 'light' | 'dark';
     labelMode: 'plain' | 'scientific';
+    sparklineMetricId: 'blood-sugar' | 'gut-sugar' | 'cell-sugar' | 'storage-signal';
     isPlaying: boolean;
+    playbackSpeedMultiplier: 1 | 5 | 15 | 60;
   } = {
     workspace: 'body-status',
     selectedSystemId: 'whole-body',
     enabledSubsystemIds: ['blood-system', 'digestive-system', 'lymph-system', 'arterial-flow', 'venous-return', 'storage-signal', 'stomach-processing', 'gut-absorption', 'liver-hand-off', 'lymph-return', 'tissue-drainage', 'gut-lacteals'],
     theme: 'light',
     labelMode: 'plain',
+    sparklineMetricId: 'blood-sugar',
     isPlaying: false,
+    playbackSpeedMultiplier: 1,
   };
   const listeners = new Set<() => void>();
 
@@ -255,8 +259,20 @@ function createStubShellStateHost() {
       snapshot = { ...snapshot, labelMode };
       emit();
     },
+    cycleSparklineMetric() {
+      const metricIds = ['blood-sugar', 'gut-sugar', 'cell-sugar', 'storage-signal'] as const;
+      const currentIndex = metricIds.indexOf(snapshot.sparklineMetricId);
+      snapshot = { ...snapshot, sparklineMetricId: metricIds[(currentIndex + 1) % metricIds.length] };
+      emit();
+    },
     setPlaying(isPlaying: boolean) {
       snapshot = { ...snapshot, isPlaying };
+      emit();
+    },
+    cyclePlaybackSpeed() {
+      const speedMultipliers = [1, 5, 15, 60] as const;
+      const currentIndex = speedMultipliers.indexOf(snapshot.playbackSpeedMultiplier);
+      snapshot = { ...snapshot, playbackSpeedMultiplier: speedMultipliers[(currentIndex + 1) % speedMultipliers.length] };
       emit();
     },
   };

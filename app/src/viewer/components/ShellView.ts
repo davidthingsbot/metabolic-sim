@@ -18,9 +18,11 @@ export interface ShellViewProps {
   onSetPlaybackTime: (playbackTime: number) => void;
   onStepPlayback: () => void;
   onTogglePlaying: () => void;
+  onCyclePlaybackSpeed: () => void;
   onBranchPlaybackTime: (playbackTime: number) => void;
   onToggleTheme: () => void;
   onToggleLabelMode: () => void;
+  onCycleSparklineMetric: () => void;
 }
 
 export const ShellView: FunctionalComponent<ShellViewProps> = ({
@@ -35,15 +37,17 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
   onSetPlaybackTime,
   onStepPlayback,
   onTogglePlaying,
+  onCyclePlaybackSpeed,
   onBranchPlaybackTime,
   onToggleTheme,
   onToggleLabelMode,
+  onCycleSparklineMetric,
 }) =>
   h('div', { class: 'shell-app' }, [
     h(BandView, {
       as: 'header',
       className: 'shell-header',
-      children: h(ShellHeaderView, { snapshot, onToggleTheme, onToggleLabelMode }),
+      children: h(ShellHeaderView, { snapshot, onToggleTheme, onToggleLabelMode, onCycleSparklineMetric }),
     }),
     h(BandView, {
       as: 'main',
@@ -62,6 +66,6 @@ export const ShellView: FunctionalComponent<ShellViewProps> = ({
     h(BandView, {
       as: 'footer',
       className: 'shell-footer',
-      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback, onTogglePlaying, onBranchPlaybackTime }),
+      children: h(ShellFooterView, { snapshot, onSetPlaybackTime, onStepPlayback, onTogglePlaying, onCyclePlaybackSpeed, onBranchPlaybackTime }),
     }),
   ]);

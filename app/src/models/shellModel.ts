@@ -12,7 +12,9 @@ export interface ShellModel {
   toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
   setLabelMode(labelMode: LabelMode): void;
+  cycleSparklineMetric(): void;
   setPlaying(isPlaying: boolean): void;
+  cyclePlaybackSpeed(): void;
   createScheduleLane(input: CreateScheduleLaneInput): Promise<void>;
   createMealActivity(input: CreateScheduledMealActivityInput): Promise<void>;
   updateMealActivity(activityId: string, input: UpdateScheduledMealActivityInput): Promise<void>;
@@ -55,8 +57,10 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
         selectedSystemId: shellStateSnapshot.selectedSystemId,
         enabledSubsystemIds: shellStateSnapshot.enabledSubsystemIds,
         labelMode: shellStateSnapshot.labelMode,
+        sparklineMetricId: shellStateSnapshot.sparklineMetricId,
         theme: shellStateSnapshot.theme,
         isPlaying: shellStateSnapshot.isPlaying,
+        playbackSpeedMultiplier: shellStateSnapshot.playbackSpeedMultiplier,
       });
     },
     subscribe(listener) {
@@ -78,8 +82,14 @@ export function createShellModel(options: CreateShellModelOptions): ShellModel {
     setLabelMode(labelMode) {
       options.shellStateHost.setLabelMode(labelMode);
     },
+    cycleSparklineMetric() {
+      options.shellStateHost.cycleSparklineMetric();
+    },
     setPlaying(isPlaying) {
       options.shellStateHost.setPlaying(isPlaying);
+    },
+    cyclePlaybackSpeed() {
+      options.shellStateHost.cyclePlaybackSpeed();
     },
     async createScheduleLane(input) {
       await options.engineHost.createScheduleLane(input);

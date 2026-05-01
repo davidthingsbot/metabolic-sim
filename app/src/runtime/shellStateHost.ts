@@ -1,5 +1,5 @@
 import { applyTheme, type Theme } from '../theme';
-import type { LabelMode, SystemId, Workspace } from '../models/shellSnapshot';
+import type { LabelMode, PlaybackSpeedMultiplier, SparklineMetricId, SystemId, Workspace } from '../models/shellSnapshot';
 
 export interface ShellStateSnapshot {
   workspace: Workspace;
@@ -7,7 +7,9 @@ export interface ShellStateSnapshot {
   enabledSubsystemIds: string[];
   theme: Theme;
   labelMode: LabelMode;
+  sparklineMetricId: SparklineMetricId;
   isPlaying: boolean;
+  playbackSpeedMultiplier: PlaybackSpeedMultiplier;
 }
 
 export interface ShellStateHost {
@@ -18,7 +20,9 @@ export interface ShellStateHost {
   toggleSubsystem(subsystemId: string): void;
   setTheme(theme: Theme): void;
   setLabelMode(labelMode: LabelMode): void;
+  cycleSparklineMetric(): void;
   setPlaying(isPlaying: boolean): void;
+  cyclePlaybackSpeed(): void;
 }
 
 export interface CreateShellStateHostOptions {
@@ -28,6 +32,8 @@ export interface CreateShellStateHostOptions {
 }
 
 const TOP_LEVEL_SYSTEM_IDS: SystemId[] = ['blood-system', 'digestive-system', 'lymph-system'];
+const SPARKLINE_METRIC_IDS: SparklineMetricId[] = ['blood-sugar', 'gut-sugar', 'cell-sugar', 'storage-signal'];
+const PLAYBACK_SPEED_MULTIPLIERS: PlaybackSpeedMultiplier[] = [1, 5, 15, 60];
 const SYSTEM_SUBTREE_IDS: Record<SystemId, string[]> = {
   'whole-body': [
     'blood-system',
@@ -68,7 +74,9 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
     ],
     theme: options.initialTheme,
     labelMode: 'plain',
+    sparklineMetricId: 'blood-sugar',
     isPlaying: false,
+    playbackSpeedMultiplier: 1,
   };
   const listeners = new Set<() => void>();
 
@@ -154,8 +162,18 @@ export function createShellStateHost(options: CreateShellStateHostOptions): Shel
       snapshot = { ...snapshot, labelMode };
       emit();
     },
+    cycleSparklineMetric() {
+      const currentIndex = SPARKLINE_METRIC_IDS.indexOf(snapshot.sparklineMetricId);
+      snapshot = { ...snapshot, sparklineMetricId: SPARKLINE_METRIC_IDS[(currentIndex + 1) % SPARKLINE_METRIC_IDS.length] };
+      emit();
+    },
     setPlaying(isPlaying) {
       snapshot = { ...snapshot, isPlaying };
+      emit();
+    },
+    cyclePlaybackSpeed() {
+      const currentIndex = PLAYBACK_SPEED_MULTIPLIERS.indexOf(snapshot.playbackSpeedMultiplier);
+      snapshot = { ...snapshot, playbackSpeedMultiplier: PLAYBACK_SPEED_MULTIPLIERS[(currentIndex + 1) % PLAYBACK_SPEED_MULTIPLIERS.length] };
       emit();
     },
   };

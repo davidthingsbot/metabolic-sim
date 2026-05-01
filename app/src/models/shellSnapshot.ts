@@ -3,6 +3,8 @@ import type { Run, ScheduleLane, ScheduledMealActivity } from '../runs/types';
 export type Workspace = 'body-status' | 'event-planner';
 export type SystemId = 'whole-body' | 'blood-system' | 'digestive-system' | 'lymph-system';
 export type LabelMode = 'plain' | 'scientific';
+export type SparklineMetricId = 'blood-sugar' | 'gut-sugar' | 'cell-sugar' | 'storage-signal';
+export type PlaybackSpeedMultiplier = 1 | 5 | 15 | 60;
 
 export interface ShellSystemItem {
   id: SystemId;
@@ -34,6 +36,7 @@ export interface ShellMonitorCard {
   value: string;
   delta: string;
   note: string;
+  sparkline: ShellLiveResultSparkline;
 }
 
 export interface ShellLiveResultCard {
@@ -130,6 +133,7 @@ export interface ShellSnapshot {
       runChipLabel: string;
       labelModeToggleLabel: string;
       themeToggleLabel: string;
+      sparklineMetricLabel: string;
     };
     midsection: {
       title: string;
@@ -146,7 +150,11 @@ export interface ShellSnapshot {
     footer: {
       scrubberStatus: string;
       playbackTime: number;
+      exactTimestampLabel: string;
       isPlaying: boolean;
+      playbackSpeedMultiplier: PlaybackSpeedMultiplier;
+      playbackSpeedLabel: string;
+      numericalAnimationMs: number;
       minPlaybackTime: number;
       maxPlaybackTime: number;
       playbackStep: number;
@@ -165,8 +173,10 @@ export interface CreateShellSnapshotOptions {
   selectedSystemId: SystemId;
   enabledSubsystemIds: string[];
   labelMode: LabelMode;
+  sparklineMetricId?: SparklineMetricId;
   theme: 'light' | 'dark';
   isPlaying: boolean;
+  playbackSpeedMultiplier?: PlaybackSpeedMultiplier;
 }
 
 const SYSTEMS: Array<{ id: SystemId; plainLabel: string; scientificLabel: string; plainCaption: string; scientificCaption: string }> = [
@@ -204,6 +214,16 @@ const WORKSPACE_OPTIONS: Array<{ value: Workspace; label: string }> = [
   { value: 'event-planner', label: 'Event Planner' },
 ];
 
+const SPARKLINE_METRICS: Record<SparklineMetricId, { label: string; unit: string }> = {
+  'blood-sugar': { label: 'Blood sugar', unit: 'g' },
+  'gut-sugar': { label: 'Gut sugar', unit: 'g' },
+  'cell-sugar': { label: 'Cell sugar', unit: 'g' },
+  'storage-signal': { label: 'Storage signal', unit: 'µU/mL' },
+};
+
+const DEFAULT_SPARKLINE_METRIC_ID: SparklineMetricId = 'blood-sugar';
+const DEFAULT_PLAYBACK_SPEED_MULTIPLIER: PlaybackSpeedMultiplier = 1;
+
 const TOP_LEVEL_SYSTEM_IDS: Array<Exclude<SystemId, 'whole-body'>> = ['blood-system', 'digestive-system', 'lymph-system'];
 
 function isTopLevelSystemId(id: string): id is Exclude<SystemId, 'whole-body'> {
@@ -231,6 +251,17 @@ function formatBodyAge(seconds: number): string {
   const months = Math.floor(remainingAfterYears / 30);
   const days = remainingAfterYears % 30;
   return `${years}y ${months}m ${days}d`;
+}
+
+function formatPreciseSimulatorTimestamp(seconds: number): string {
+  const totalDays = Math.floor(seconds / 86400);
+  const years = Math.floor(totalDays / 365);
+  const dayOfYear = totalDays % 365;
+  const secondsOfDay = seconds % 86400;
+  const hours = Math.floor(secondsOfDay / 3600);
+  const minutes = Math.floor((secondsOfDay % 3600) / 60);
+  const remainingSeconds = secondsOfDay % 60;
+  return `T+${years}y ${dayOfYear.toString().padStart(3, '0')}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 function getDisplayText(labelMode: LabelMode, plainLabel: string, scientificLabel: string): string {
@@ -519,7 +550,7 @@ function createPreviousCheckpoint(run: Run): Run['history']['checkpoints'][numbe
   return checkpoints.find((checkpoint) => checkpoint.playbackTime < run.activePlaybackTime);
 }
 
-function createRecentHistoryEntries(run: Run): Array<{ playbackTime: number; bloodSugar: number; gutSugar: number }> {
+function createRecentHistoryEntries(run: Run): Array<{ playbackTime: number; bloodSugar: number; gutSugar: number; cellSugar: number; storageSignal: number }> {
   const recentWindowStart = Math.max(run.activePlaybackTime - 3600, 0);
   const entries = run.history.checkpoints
     .filter((checkpoint) => checkpoint.playbackTime >= recentWindowStart && checkpoint.playbackTime <= run.activePlaybackTime)
@@ -528,6 +559,8 @@ function createRecentHistoryEntries(run: Run): Array<{ playbackTime: number; blo
       playbackTime: checkpoint.playbackTime,
       bloodSugar: checkpoint.individuals[0]?.state.substances.glucose.blood ?? 0,
       gutSugar: checkpoint.individuals[0]?.state.substances.glucose.gut ?? 0,
+      cellSugar: checkpoint.individuals[0]?.state.substances.glucose.cells ?? 0,
+      storageSignal: checkpoint.individuals[0]?.state.hormones.insulin ?? 0,
     }));
 
   if (entries[entries.length - 1]?.playbackTime !== run.activePlaybackTime) {
@@ -535,6 +568,8 @@ function createRecentHistoryEntries(run: Run): Array<{ playbackTime: number; blo
       playbackTime: run.activePlaybackTime,
       bloodSugar: run.individuals[0]?.state.substances.glucose.blood ?? 0,
       gutSugar: run.individuals[0]?.state.substances.glucose.gut ?? 0,
+      cellSugar: run.individuals[0]?.state.substances.glucose.cells ?? 0,
+      storageSignal: run.individuals[0]?.state.hormones.insulin ?? 0,
     });
   }
 
@@ -570,17 +605,38 @@ function createLiveResultCards(run: Run): ShellLiveResultCard[] {
   ];
 }
 
-function createLiveResultSparkline(run: Run): ShellLiveResultSparkline {
+function getMetricPoint(entry: ReturnType<typeof createRecentHistoryEntries>[number], metricId: SparklineMetricId): number {
+  switch (metricId) {
+    case 'gut-sugar':
+      return entry.gutSugar;
+    case 'cell-sugar':
+      return entry.cellSugar;
+    case 'storage-signal':
+      return entry.storageSignal;
+    case 'blood-sugar':
+    default:
+      return entry.bloodSugar;
+  }
+}
+
+function resolveSparklineMetricId(metricId: SparklineMetricId | undefined): SparklineMetricId {
+  return metricId && SPARKLINE_METRICS[metricId] ? metricId : DEFAULT_SPARKLINE_METRIC_ID;
+}
+
+function createMetricSparkline(run: Run, metricId: SparklineMetricId | undefined): ShellLiveResultSparkline {
+  const resolvedMetricId = resolveSparklineMetricId(metricId);
+  const metric = SPARKLINE_METRICS[resolvedMetricId];
   const points = createRecentHistoryEntries(run)
     .slice(-12)
-    .map((entry) => entry.bloodSugar);
-  const minPoint = Math.min(...points);
-  const maxPoint = Math.max(...points);
+    .map((entry) => getMetricPoint(entry, resolvedMetricId));
+  const safePoints = points.length ? points : [0];
+  const minPoint = Math.min(...safePoints);
+  const maxPoint = Math.max(...safePoints);
 
   return {
-    points,
-    minLabel: `${minPoint.toFixed(1)} g`,
-    maxLabel: `${maxPoint.toFixed(1)} g`,
+    points: safePoints,
+    minLabel: `${minPoint.toFixed(1)} ${metric.unit}`,
+    maxLabel: `${maxPoint.toFixed(1)} ${metric.unit}`,
   };
 }
 
@@ -624,12 +680,18 @@ function createMonitorCards(
     const system = SYSTEMS.find((candidate) => candidate.id === systemId);
     const metric = metricForSystemId[systemId];
     const sourceCard = cardByMetric.get(metric.plain) ?? liveResultCards[0];
+    const sparklineMetricId: Record<Exclude<SystemId, 'whole-body'>, SparklineMetricId> = {
+      'blood-system': 'blood-sugar',
+      'digestive-system': 'gut-sugar',
+      'lymph-system': 'cell-sugar',
+    };
     return {
       id: systemId,
       title: getDisplayText(labelMode, system?.plainLabel ?? systemId, system?.scientificLabel ?? systemId),
       value: sourceCard?.value ?? '0.0 g',
       delta: sourceCard?.delta ?? '±0.0 g vs baseline',
       note: getDisplayText(labelMode, metric.notePlain, metric.noteScientific),
+      sparkline: createMetricSparkline(run, sparklineMetricId[systemId]),
     };
   });
 }
@@ -692,6 +754,8 @@ function createSubsystemItems(selectedSystemId: SystemId, enabledSubsystemIds: s
 
 export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellSnapshot {
   const state = options.run.individuals[0]?.state;
+  const sparklineMetricId = resolveSparklineMetricId(options.sparklineMetricId);
+  const playbackSpeedMultiplier = options.playbackSpeedMultiplier ?? DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   const bloodSugar = state?.substances.glucose.blood ?? 0;
   const insulin = state?.hormones.insulin ?? 0;
   const selectedSystem = SYSTEMS.find((system) => system.id === options.selectedSystemId) ?? SYSTEMS[0];
@@ -701,7 +765,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
   const repeatingLaneCount = options.run.scheduleLanes.filter((lane) => lane.kind === 'repeating-cycle').length;
   const bodyStatusLiveResults = {
     cards: createLiveResultCards(options.run),
-    sparkline: createLiveResultSparkline(options.run),
+    sparkline: createMetricSparkline(options.run, sparklineMetricId),
     recentMoments: createRecentMoments(options.run),
   };
 
@@ -740,6 +804,7 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
         runChipLabel: `Run: ${options.run.name}`,
         labelModeToggleLabel: options.labelMode === 'scientific' ? 'Scientific labels' : 'Plain labels',
         themeToggleLabel: options.theme === 'dark' ? 'Light mode' : 'Dark mode',
+        sparklineMetricLabel: `Sparkline: ${SPARKLINE_METRICS[sparklineMetricId].label}`,
       },
       midsection: {
         title: options.workspace === 'body-status' ? 'Body Status' : '',
@@ -757,7 +822,11 @@ export function createShellSnapshot(options: CreateShellSnapshotOptions): ShellS
       footer: {
         scrubberStatus: createScrubberStatus(options.run),
         playbackTime: options.run.activePlaybackTime,
+        exactTimestampLabel: formatPreciseSimulatorTimestamp(options.run.activePlaybackTime),
         isPlaying: options.isPlaying,
+        playbackSpeedMultiplier,
+        playbackSpeedLabel: `${playbackSpeedMultiplier}×`,
+        numericalAnimationMs: 300,
         minPlaybackTime: 0,
         maxPlaybackTime: createMaxPlaybackTime(options.run),
         playbackStep: 1,

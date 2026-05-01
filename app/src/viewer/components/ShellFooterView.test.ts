@@ -29,6 +29,7 @@ function createSnapshot(): ShellSnapshot {
         runChipLabel: 'Run: Footer Test',
         labelModeToggleLabel: 'Plain labels',
         themeToggleLabel: 'Dark mode',
+        sparklineMetricLabel: 'Sparkline: Blood sugar',
       },
       midsection: {
         title: 'Live results panel',
@@ -49,7 +50,11 @@ function createSnapshot(): ShellSnapshot {
       footer: {
         scrubberStatus: 'Timeline 1h 30m · 4 checkpoints · Recorded 0h 00m–3h 00m',
         playbackTime: 5400,
+        exactTimestampLabel: 'T+0y 000d 01:30:00',
         isPlaying: true,
+        playbackSpeedMultiplier: 15,
+        playbackSpeedLabel: '15×',
+        numericalAnimationMs: 300,
         minPlaybackTime: 0,
         maxPlaybackTime: 3,
         playbackStep: 1,
@@ -140,6 +145,7 @@ describe('ShellFooterView', () => {
       onSetPlaybackTime: () => undefined,
       onStepPlayback: () => undefined,
       onTogglePlaying: () => undefined,
+      onCyclePlaybackSpeed: () => undefined,
       onBranchPlaybackTime: () => undefined,
     });
 
@@ -160,6 +166,7 @@ describe('ShellFooterView', () => {
       onSetPlaybackTime: () => undefined,
       onStepPlayback: () => undefined,
       onTogglePlaying: () => undefined,
+      onCyclePlaybackSpeed: () => undefined,
       onBranchPlaybackTime: () => undefined,
     });
 
@@ -188,6 +195,7 @@ describe('ShellFooterView', () => {
       onSetPlaybackTime: () => undefined,
       onStepPlayback: () => undefined,
       onTogglePlaying: () => undefined,
+      onCyclePlaybackSpeed: () => undefined,
       onBranchPlaybackTime: () => undefined,
     });
 
@@ -201,6 +209,32 @@ describe('ShellFooterView', () => {
     expect(flattenText(rareEvent?.props.children)).toContain('One-Off meal');
     expect(flattenText(selectedDayEvent?.props.children)).toContain('Daily meal');
     expect(flattenText(selectedDayEvent?.props.children)).toContain('1h 30m–2h 00m');
+  });
+
+  it('shows the precise simulator timestamp and cycles playback speed from the control cluster', () => {
+    let speedClicks = 0;
+    const view = ShellFooterView({
+      snapshot: createSnapshot(),
+      onSetPlaybackTime: () => undefined,
+      onStepPlayback: () => undefined,
+      onTogglePlaying: () => undefined,
+      onCyclePlaybackSpeed: () => { speedClicks += 1; },
+      onBranchPlaybackTime: () => undefined,
+    });
+
+    const timestamp = findByClassName(view, 'simulator-timestamp animated-number');
+    const footerStyle = ((view as VNode).props as { style?: string }).style;
+    const footerText = flattenText((view as VNode).props.children);
+
+    expect(flattenText(timestamp?.props.children)).toBe('T+0y 000d 01:30:00');
+    expect(footerStyle).toBe('--numeric-animation-duration: 300ms;');
+    expect(footerText).toContain('15×');
+
+    const controls = findByClassName(view, 'chip-row')?.props.children as VNode[];
+    const speedButton = controls.find((child) => flattenText(child.props.children) === '15×');
+    (speedButton?.props as { onClick?: () => void }).onClick?.();
+
+    expect(speedClicks).toBe(1);
   });
 
   it('allocates footer width to controls first and lets timelines take the remaining width', () => {

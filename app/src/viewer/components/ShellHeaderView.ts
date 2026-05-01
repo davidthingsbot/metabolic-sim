@@ -5,9 +5,10 @@ export interface ShellHeaderViewProps {
   snapshot: ShellSnapshot;
   onToggleTheme: () => void;
   onToggleLabelMode: () => void;
+  onCycleSparklineMetric: () => void;
 }
 
-export const ShellHeaderView: FunctionalComponent<ShellHeaderViewProps> = ({ snapshot, onToggleTheme, onToggleLabelMode }) =>
+export const ShellHeaderView: FunctionalComponent<ShellHeaderViewProps> = ({ snapshot, onToggleTheme, onToggleLabelMode, onCycleSparklineMetric }) =>
   h('div', { class: 'header-top-row' }, [
     h('div', { class: 'header-brand' }, [
       h('img', {
@@ -21,6 +22,7 @@ export const ShellHeaderView: FunctionalComponent<ShellHeaderViewProps> = ({ sna
     ]),
     h('div', { class: 'header-viewer-controls' }, [
       h('button', { class: 'control-chip', type: 'button', onClick: onToggleLabelMode }, snapshot.bands.header.labelModeToggleLabel),
+      h('button', { class: 'control-chip', type: 'button', onClick: onCycleSparklineMetric }, snapshot.bands.header.sparklineMetricLabel),
       h('button', { class: 'theme-toggle', type: 'button', onClick: onToggleTheme }, snapshot.bands.header.themeToggleLabel),
     ]),
   ]);

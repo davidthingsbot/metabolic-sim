@@ -27,6 +27,7 @@ function createSnapshot(): ShellSnapshot {
         runChipLabel: 'Run: Metabolic Run',
         labelModeToggleLabel: 'Plain labels',
         themeToggleLabel: 'Dark mode',
+        sparklineMetricLabel: 'Sparkline: Gut sugar',
       },
       midsection: {
         title: 'Live results panel',
@@ -47,7 +48,11 @@ function createSnapshot(): ShellSnapshot {
       footer: {
         scrubberStatus: 'Timeline status',
         playbackTime: 0,
+        exactTimestampLabel: 'T+0y 000d 00:00:00',
         isPlaying: false,
+        playbackSpeedMultiplier: 1,
+        playbackSpeedLabel: '1×',
+        numericalAnimationMs: 300,
         minPlaybackTime: 0,
         maxPlaybackTime: 0,
         playbackStep: 1,
@@ -104,6 +109,7 @@ describe('ShellHeaderView', () => {
       snapshot: createSnapshot(),
       onToggleTheme: () => undefined,
       onToggleLabelMode: () => undefined,
+      onCycleSparklineMetric: () => undefined,
     });
 
     const titleRow = findByClassName(view, 'header-brand');
@@ -122,5 +128,24 @@ describe('ShellHeaderView', () => {
     expect(headerText).not.toContain('Viewer Bar');
     expect(headerText).not.toContain('Pause');
     expect(headerText).not.toContain('Reset');
+  });
+
+  it('renders the sparkline metric selector and invokes its cycle handler', () => {
+    let cycleClicks = 0;
+    const view = ShellHeaderView({
+      snapshot: createSnapshot(),
+      onToggleTheme: () => undefined,
+      onToggleLabelMode: () => undefined,
+      onCycleSparklineMetric: () => { cycleClicks += 1; },
+    });
+
+    const viewerControls = findByClassName(view, 'header-viewer-controls');
+    const controls = viewerControls?.props.children as VNode[];
+    const sparklineButton = controls.find((child) => flattenText(child.props.children) === 'Sparkline: Gut sugar');
+
+    expect(flattenText(view)).toContain('Sparkline: Gut sugar');
+    expect(sparklineButton).toBeDefined();
+    (sparklineButton?.props as { onClick?: () => void }).onClick?.();
+    expect(cycleClicks).toBe(1);
   });
 });
